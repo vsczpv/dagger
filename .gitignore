@@ -1,3 +1,4 @@
 vmdagger
 cross/*
 build/*
+boot/*

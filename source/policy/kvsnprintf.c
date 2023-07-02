@@ -102,6 +102,7 @@ int kvsnprintf(char str[], size_t size, const char* restrict format, va_list va)
 				str[str_index]   = format[i];
 				str[str_index+1] = '\0';
 			}
+
 			str_index++;
 		}
 	}

@@ -1,7 +1,7 @@
 ARCH = amd64
 
-CC = x86_64-elf-gcc
-LD = x86_64-elf-ld
+CC = cross/dest/bin/x86_64-elf-gcc
+LD = cross/dest/bin/x86_64-elf-ld
 
 OBJS_POLICY =    $(shell find source/policy            -name '*.c' -type f | sed 's/\.c$$/\.o/;s/source\//build\//')
 OBJS_MECHANISM = $(shell find source/mechanism/$(ARCH) -name '*.c' -type f | sed 's/\.c$$/\.o/;s/source\//build\//')
