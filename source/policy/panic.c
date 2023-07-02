@@ -3,6 +3,9 @@
 #include <vt_escape_sequences.h>
 #include <panic.h>
 
+/*
+ * The underlying implementation of the panic() macro
+ */
 noreturn void ___panic(const char* restrict msg, const char* restrict file, int line)
 {
 

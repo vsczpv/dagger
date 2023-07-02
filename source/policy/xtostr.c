@@ -2,6 +2,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/*
+ * itostr
+ *
+ * Converts an integer into a string.
+ *
+ * It takes the pointer to a buffer str[] of size XTOSTR_ARRAY_SIZE, and a number
+ * to stringify, number.
+ */
 void itostr(char str[XTOSTR_ARRAY_SIZE], int number)
 {
 
