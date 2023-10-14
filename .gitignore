@@ -2,3 +2,4 @@ vmdagger
 cross/*
 build/*
 boot/*
+*.kdev4

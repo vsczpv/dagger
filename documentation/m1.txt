@@ -5,13 +5,6 @@ Shortterm Goal:
 		- Current memory mappings          ✓
 		- Memory used by bootloader        ✓
 
-	- Unload limine
-
-	- Set memory layout sane
-		- Unmap lower addresses mapped by limine
-
-	- Make a memory manager
-
 	- Write support for loading and setting a GDT
 		* Might be non-trivial at this stage
 		* The goal here would be to just rid off
@@ -19,6 +12,13 @@ Shortterm Goal:
 		  for a proper one. I strongly suspect the
 		  16-bit and 32-bit entries on them are
 		  redundant.
+
+	- Unload limine
+
+	- Set memory layout sane
+		- Unmap lower addresses mapped by limine
+
+	- Make a memory manager
 
 This may involve manipulating the "bootloader page tables", as in,
 transform them into my own.

@@ -1,0 +1,162 @@
+- Write support for loading and setting a GDT
+	* Might be non-trivial at this stage
+	* The goal here would be to just rid off
+	  limine's GDT, while also paving the way
+	  for a proper one. I strongly suspect the
+	  16-bit and 32-bit entries on them are
+	  redundant.
+
+### Describe the GDT
+
+	* What is the GDT, what is it used for and how is it structured?            |
+
+	In general, the GDT, or Global Descriptor Table, is partially a legacy feature
+	from old i686. It "segments" the memory into multiple memory chunks, each with their
+	own permissions. It is a form of memory protection, though page-based protection
+	via the MMU eventually superseeded the GDT. You still need to initialize it, as
+	it's still technically used by the processor for memory protection; not only that,
+	it's not the MMU that's responsible for protecting sensitive instructions, this
+	job still being relegated to the GDT. Modern long mode ignores the base and
+	length parameters of the GDT, such making it impossible to use it for memory
+	protection, further emphasising the use of the MMU.
+
+	You'd define a Descriptor Table, that conteins "Segment Descriptors", which describe
+	the size, location and permissionions each segment. Which segment is currently enforced
+	is selected by a "Segment Register", which takes an offset into the GDT as it's value.
+
+	For example, when a segment descriptor that defines the
+	memory range 0x1000-0xc000 as "read-only" localized as the third entry in the GDT
+	is created, and when once loaded the value 0x18 (3 * 0x8) into the DS register,
+	any write attempts to 0x1000-0xc000 would cause a general protection fault.
+
+	wiki.osdev.org recommends:
+
+	   “• Entry 0 in a descriptor table, or the Null Descriptor, is never referenced
+	    by the processor, and should always contain no data. Certain emulators,
+	    like Bochs, will complain about limit exceptions if you do not have one present.
+	    Some use this descriptor to store a pointer to the GDT itself
+	    (to use with the LGDT instruction). The null descriptor is 8 bytes wide and
+	    the pointer is 6 bytes wide so it might just be the perfect place for this.
+
+        • A DPL 0 Code Segment descriptor (for your kernel)
+
+        • A Data Segment descriptor (writing to code segments is not allowed)
+
+        • A Task State Segment segment descriptor (its very useful to have at least one)
+
+        • Room for more segments if you need them (e.g. user-level, LDTs, more TSS, whatever)”
+
+	[1]
+
+	Further, they explain:
+
+	   “Flat / Long Mode Setup
+
+	    If you do not desire to use Segmentation to separate memory into protected areas, you can get
+	    away with using only a few segment descriptors. One reason may be that you desire to only
+	    use paging to protect memory. As well, this model is strictly enforced in Long Mode, as
+	    the base and limit values are ignored.
+
+	    In this scenario, the only Segment Descriptors necessary are the Null Descriptor, and one
+	    descriptor for each combination of privilege level, segment type, and execution mode desired,
+	    as well as system descriptors. Usually this will consist of the one code and one data segment
+	    for kernel and user mode, and a Task State Segment.”
+
+	[1]
+
+	To which they recommend the following GDT:
+
+	    Offset  Use                         Content
+
+																    //  The Null Descriptor
+	    0x0000  Null Descriptor 	        Base = 0                //
+	                                        Limit = 0x00000000      // Information here is irrelevan
+	                                        Access Byte = 0x00      //
+	                                        Flags = 0x0             //
+
+	                                                                //  Describes the kernel code segment
+	    0x0008 	Kernel Mode Code Segment 	Base = 0                // Base here is set to 0, but our higher half kernel should be set to -0x80000000
+	                                        Limit = 0xFFFFF         // Limit should be adjuster accordingly
+	                                        Access Byte = 0x9A      // Present | Ring 0 | C/D segment | EXE | grow up | Read Allow | Access Cleared
+	                                        Flags = 0xA             // KiB     | 64-bit
+		                                                            // Addendum: It is possible to, in fact, cover the whole address space,
+												                    //           and manage the memory via the MMU instead.
+																	//           Also, base and limit are ignored in Long mode anyway.
+
+																	//  Describes the kernel data segment
+	    0x0010 	Kernel Mode Data Segment 	Base = 0                // Same as KMCS
+	                                        Limit = 0xFFFFF         // ''
+	                                        Access Byte = 0x92      // Present | Ring 0 | C/D segment | DAT | grow up | Write Allow | Access Cleared
+	                                        Flags = 0xC             // KiB     | 32-bit ; This is 32-bit?
+
+																	//  Describes the userland code segment
+																	//  Not that my kernel has any yet, and it definetively wouldn't
+																	//  extend all the way to the top address
+	    0x0018 	User Mode Code Segment 	    Base = 0                // ''
+	                                        Limit = 0xFFFFF         // ''
+	                                        Access Byte = 0xFA      // Present | Ring 3 | C/D segment | EXE | grow up | Read Allow | Access Cleared
+	                                        Flags = 0xA             // KiB | 64-bit
+
+	                                                                //  Describes the userland data segment
+	    0x0020 	User Mode Data Segment 	    Base = 0                // ''
+	                                        Limit = 0xFFFFF         // ''
+	                                        Access Byte = 0xF2      // Present | Ring 3 | C/D segment | DAT | grow up | Write Allow | Access Cleared
+	                                        Flags = 0xC             // KiB | 32-bit
+
+	    0x0028 	Task State Segment                                  //  The task segment
+	    (64-bit System Segment) 	        Base = &TSS             // Address of TSS
+	                                        Limit = sizeof(TSS)     // Limit of TSS
+	                                        Access Byte = 0x89      //
+	                                        Flags = 0x0             //
+
+	[1]
+
+	Notes:
+
+		• 64-bit segment specifier is for code segments only
+		• I wont implement the user segments and tss (right now)
+
+	While not much good info on the TSS is available, it seem to be renponsible (atleast on Long mode) to hold the stack pointers
+	needed to switch from user → kernel and back.
+
+	In general, now I need to implement just the null and kernel ones.
+
+	* How to modify/load one?
+
+	Disable Interrupts.
+
+	You must load it with the lgdt instruction. It takes a struct which specifies
+	the limit and base of the GDT. Base is where it is, limit is it's length.
+
+	__attribute__ ((packed)) struct gdt_location_info
+	{
+		uint16_t limit;
+		uint64_t base;
+	}
+
+	You must then reload the segment registers. While most registers can be modified
+	with a simple mov, the CS registers requires a far return.
+
+	From wiki.osdev.org:
+
+	    reloadSegments:
+	                                  ; Reload CS register:
+	        PUSH 0x08                 ; Push code segment to stack, 0x08 is a stand-in for your code segment
+	        LEA RAX, [rel .reload_CS] ; Load address of .reload_CS into RAX
+	        PUSH RAX                  ; Push this value to the stack
+	        RETFQ                     ; Perform a far return, RETFQ or LRETQ depending on syntax
+	    .reload_CS:
+	                                  ; Reload data segment registers
+	        MOV   AX, 0x10            ; 0x10 is a stand-in for your data segment
+	        MOV   DS, AX
+	        MOV   ES, AX
+	        MOV   FS, AX
+	        MOV   GS, AX
+	        MOV   SS, AX
+	        RET
+
+	[1]
+
+### Sources
+
+[1] (https://wiki.osdev.org/GDT_Tutorial)
