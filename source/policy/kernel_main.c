@@ -3,6 +3,10 @@
 #include <return_not.h>
 #include <early_alloc.h>
 
+/* Where the kernel is */
+void* kernel_physical_base = NULL;
+void* kernel_virtual_base  = NULL;
+
 /*
  * kernel_main
  *

@@ -38,12 +38,21 @@ volatile struct limine_hhdm_request hhdm_request =
 };
 
 /*
+ * This struct queries limine for the kernel's address
+ */
+volatile struct limine_kernel_address_request kaddr_request =
+{
+	.id       = LIMINE_KERNEL_ADDRESS_REQUEST,
+	.revision = 0,
+};
+
+/*
  * This function takes the memmap info from limine and properly loads it into
  * the kernel.
  *
  * It also initializes the early boot bump-allocator.
  */
-static void scan_limine_boot_memmaps(void)
+static void limine_scan_boot_memmaps(void)
 {
 
 	void* ea_pool = NULL;
@@ -104,6 +113,22 @@ static void scan_limine_boot_memmaps(void)
 	return;
 }
 
+static void limine_get_kernel_address(void)
+{
+
+	/* The kernel cannot continue booting without knowning it's own address */
+	if (kaddr_request.response == NULL) panic("no kernel address request answered");
+
+	struct limine_kernel_address_response* kaddr = kaddr_request.response;
+
+	kernel_physical_base = (void*) kaddr->physical_base;
+	kernel_virtual_base  = (void*) kaddr->virtual_base;
+
+	kprintf("kernel physical %X\nkernel virtual  %X\n", kernel_physical_base, kernel_virtual_base);
+
+	return;
+}
+
 /*
  * start_kernel
  *
@@ -114,13 +139,15 @@ static void scan_limine_boot_memmaps(void)
 noreturn void start_kernel(void)
 {
 
+	//TODO: Remove, terminal_request is DEPRECATED
 	/* Limine should've provided a nice high-res vt console for us, so halt the system in case it has failed to do so. */
 	if (terminal_request.response == NULL || terminal_request.response->terminal_count < 1) goto critical_early_boot_failure;
 
 	kprintln(VT_BOLD "Dagger 1.0 - Kernel Startup" VT_END);
 
-	/* Use Limine to scan for physical memory */
-	scan_limine_boot_memmaps();
+	/* Use Limine to get system info */
+	limine_scan_boot_memmaps();
+	limine_get_kernel_address();
 
 	/* Call into the platform agnostic portion of the kernel */
 	kernel_main();
