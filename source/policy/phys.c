@@ -2,7 +2,7 @@
 #include <early_alloc.h>
 #include <panic.h>
 
-struct physical_memory_descriptor_table physical_memory_descriptor =
+struct physmap_descriptor_table physmap_descriptor =
 {
 	.capacity  = 0,
 	.map_count = 0,
@@ -22,24 +22,24 @@ void pm_set_hhdm(void* hhdm)
 void pm_allocate_table(unsigned int count)
 {
 
-	physical_memory_descriptor.capacity = count;
-	physical_memory_descriptor.maps     = early_alloc(sizeof (struct physical_memory_map) * count);
+	physmap_descriptor.capacity = count;
+	physmap_descriptor.maps     = early_alloc(sizeof (struct physmap) * count);
 
 	return;
 }
 
-void pm_add_map(void* base, size_t length, enum physical_memory_map_type type)
+void pm_add_map(void* base, size_t length, enum physmap_type type)
 {
 
-	struct physical_memory_map* map = &physical_memory_descriptor.maps[physical_memory_descriptor.map_count];
+	struct physmap* map = &physmap_descriptor.maps[physmap_descriptor.map_count];
 
 	map->base   = base;
 	map->length = length;
 	map->type   = type;
 
-	physical_memory_descriptor.map_count++;
+	physmap_descriptor.map_count++;
 
-	if (physical_memory_descriptor.map_count > physical_memory_descriptor.capacity) panic("overflow in physical_memory_descriptor");
+	if (physmap_descriptor.map_count > physmap_descriptor.capacity) panic("overflow in physmap_descriptor");
 
 	return;
 }

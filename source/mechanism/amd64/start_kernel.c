@@ -107,7 +107,7 @@ static void limine_scan_boot_memmaps(void)
 	for (size_t i = 0; i < memmap->entry_count; i++)
 	{
 		struct limine_memmap_entry* e = memmap->entries[i];
-		pm_add_map((void*) e->base, (size_t) e->length, (enum physical_memory_map_type) e->type);
+		pm_add_map((void*) e->base, (size_t) e->length, (enum physmap_type) e->type);
 	}
 
 	return;
