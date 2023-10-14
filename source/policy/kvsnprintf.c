@@ -64,6 +64,52 @@ int kvsnprintf(char str[], size_t size, const char* restrict format, va_list va)
 					in_state_machine = false;
 					break;
 				}
+				case 'x':
+				{
+					char result[XTOSTR_ARRAY_SIZE];
+					xtostr(result, va_arg(va, int));
+
+					int j = 0;
+
+					while (result[j])
+					{
+						CHECK_END_OF_STR();
+
+						if (!simulated)
+						{
+							str[str_index] = result[j];
+							str[str_index+1] = '\0';
+						}
+
+						str_index++, j++;
+					}
+
+					in_state_machine = false;
+					break;
+				}
+				case 'X':
+				{
+					char result[XTOSTR_ARRAY_SIZE];
+					lxtostr(result, va_arg(va, int));
+
+					int j = 0;
+
+					while (result[j])
+					{
+						CHECK_END_OF_STR();
+
+						if (!simulated)
+						{
+							str[str_index] = result[j];
+							str[str_index+1] = '\0';
+						}
+
+						str_index++, j++;
+					}
+
+					in_state_machine = false;
+					break;
+				}
 				case 's':
 				{
 					char* newstr   = va_arg(va, char*);
