@@ -1,0 +1,34 @@
+﻿Research about
+	- Fancy LaTeX techniques
+	- GDT/LDT/IDT
+	- Memory Management
+		- Physical
+			- buddy?
+			- bitmaps?
+			- Both?
+			- Best implementation practices
+		- Virtual
+			- How GTD Works
+			- How to do that whole "page" shebang
+			- MMU, TLB
+
+		- Is *my* enum-based bitmap the same as the stadard bitmap out there?
+
+Implement
+	- Docs about research
+	- GDT/LDT/IDT handling
+	- Physical memory management/allocator
+		- [MAYBE] bump
+		- Enum/bitmap
+		- buddy
+
+	- [CLOUDY] vm
+
+
+Philosophy
+	- How many different allocation frontends?
+		- Kernel only "bitmap" allocator with 640KiB budget
+			- Should it be page based? Should it be directly off of the physical pool (prbl. not)
+				* Maybe just permanently allocate some area with the buddy.
+		- Should I have a bump allocator, or will the bitmap allocator be enough?
+

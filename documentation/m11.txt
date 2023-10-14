@@ -1,0 +1,80 @@
+## Fetch memory information from limine
+
+* Memory in system (locations):
+
+### How does limine store the information
+### regarding available current memory maps
+### on the system and how to fetch them?
+
+	Limine provides a feature request by the name of "Memory Map Feature",
+	that provides the following response:
+
+	struct limine_memmap_response {
+		uint64_t revision;
+		uint64_t entry_count;
+		struct limine_memmap_entry **entries;
+	}
+
+	where entry_count is how many memory map entries are present,
+	and entries is a pointer to an array of pointers
+	to struct limine_memmap_entry structures.
+
+	It provides eight different enumarations of "page types", where
+	they can be: usable, reserved, acpi_reclaimable, acpi_nvs,
+	bad_memory, bootloader_reclaimable, kernel_and_modules,
+	framebuffer.
+
+		· Usable:   Free memory ready to be used.
+		· Reserved: Potentially hardware encumbered memory location.
+
+		· ACPI Reclaimable:
+
+		       “Memory identified by the platform boot firmware
+		        that contains the ACPI tables. This memory can be any place above 8 MB
+		        and contains the ACPI tables. When OSPM is finished using the ACPI tables,
+		        it is free to reclaim this memory for system
+		        software use (application space).”
+
+		(https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/16_Waking_and_Sleeping/initialization.html)
+
+		· ACPI NVS:
+
+		       “ACPI NVS Memory. This range of addresses is in use or reserved by the system
+		        and must not be used by the operating system.
+		        This range is required to be saved and restored across an NVS sleep.”
+
+		(https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/15_System_Address_Map_Interfaces/Sys_Address_Map_Interfaces.html)
+
+		· Bad Memory: While limine does not define what "Bad Memory" is, the name is quite
+		              inflammatory. One would assume it refers to physically damaged memory,
+		              and one must not use it.
+
+		· Bootloader reclamable: Memory used by limine itself, that can be reclaimed;
+		· Kernel & Modules:      Our kernel.
+		· Frambuffer:            The graphical frambuffer provided by limine.
+
+
+		Some extra notes about this request are provided by the Limine documentation:
+
+		       “Memory between 0 and 0x1000 is never marked as usable memory. The kernel and modules
+		        loaded are not marked as usable memory. They are marked as Kernel/Modules.
+		        The entries are guaranteed to be sorted by base address, lowest to highest.
+		        Usable and bootloader reclaimable entries are guaranteed to be 4096 byte aligned
+		        for both base and length. Usable and bootloader reclaimable entries are guaranteed
+		        not to overlap with any other entry. To the contrary, all non-usable entries
+		        (including kernel/modules) are not guaranteed any alignment, nor is it guaranteed
+		        that they do not overlap other entries.”
+
+		(https://github.com/limine-bootloader/limine/blob/v4.x-branch/PROTOCOL.md)
+
+		As for the struct limine_memmap_entry themselves:
+
+		struct limine_memmap_entry {
+			uint64_t base;
+			uint64_t length;
+			uint64_t type;
+		};
+
+### In short, Limine provides the physical addresses of everything via this syste.
+### In conjuction to the HHDM request, you can craft their virtual addresses.
+### Limine does not seem to provide information on where it's pagetables are.

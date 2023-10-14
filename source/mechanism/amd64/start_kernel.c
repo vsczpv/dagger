@@ -1,6 +1,8 @@
 #include <arch/amd64/limine.h>
-#include <stdnoreturn.h>
 #include <vt_escape_sequences.h>
+#include <early_alloc.h>
+#include <phys.h>
+#include <stdnoreturn.h>
 #include <panic.h>
 #include <stddef.h>
 #include <ktext.h>
@@ -38,12 +40,13 @@ volatile struct limine_hhdm_request hhdm_request =
 /*
  * This function takes the memmap info from limine and properly loads it into
  * the kernel.
+ *
+ * It also initializes the early boot bump-allocator.
  */
 static void scan_limine_boot_memmaps(void)
 {
 
-	//TODO: Load info into kernel
-
+	void* ea_pool = NULL;
 
 	/* The kernel cannot continue booting without knowning it's own RAM */
 	if (memmap_request.response == NULL) panic("no memmap request answered");
@@ -62,6 +65,8 @@ static void scan_limine_boot_memmaps(void)
 	{
 		struct limine_memmap_entry* e = memmap->entries[i];
 
+		/* Print this information */
+
 		size_t length = e->length;
 		char*  unit   = "bytes";
 
@@ -69,10 +74,31 @@ static void scan_limine_boot_memmaps(void)
 		else if (length >= MiB) unit = "MiB", length /=  MiB;
 		else if (length >= KiB) unit = "KiB", length /=  KiB;
 
-		char* types[] = {"usable", "reserved", "acpi reclaimable", "acpi nvs", "bad memory", "bootloader reclaimable", "kernel", "framebuffer"};
+		static char* types[] = {"usable", "reserved", "acpi reclaimable", "acpi nvs", "bad memory", "bootloader reclaimable", "kernel", "framebuffer"};
 		char* type    = types[e->type];
 
 		kprintfln("%X %i %s\t%s", e->base, length, unit, type);
+
+		/* We must find a free region of memory that is atleast EARLY_ALLOC_BUDGET bytes in size */
+		if (!ea_pool && e->length > 32*KiB) ea_pool = (void*) (hhdm->offset + e->base);
+
+	}
+
+	if (!ea_pool) panic("not enough memory to initialize early boot bump allocator");
+
+	/* Initialize early_alloc */
+	early_alloc_set_memory_pool(ea_pool);
+
+	kprintfln("kernel successfully allocated %i bytes of RAM for early boot", EARLY_ALLOC_BUDGET);
+
+	/* Load information into the kernel */
+	pm_set_hhdm((void*) hhdm->offset);
+	pm_allocate_table(memmap->entry_count);
+
+	for (size_t i = 0; i < memmap->entry_count; i++)
+	{
+		struct limine_memmap_entry* e = memmap->entries[i];
+		pm_add_map((void*) e->base, (size_t) e->length, (enum physical_memory_map_type) e->type);
 	}
 
 	return;
@@ -93,8 +119,10 @@ noreturn void start_kernel(void)
 
 	kprintln(VT_BOLD "Dagger 1.0 - Kernel Startup" VT_END);
 
+	/* Use Limine to scan for physical memory */
 	scan_limine_boot_memmaps();
 
+	/* Call into the platform agnostic portion of the kernel */
 	kernel_main();
 
 	panic("kernel_main returned.");
