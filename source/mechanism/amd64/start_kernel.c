@@ -1,13 +1,15 @@
+#include <stdnoreturn.h>
+
 #include <arch/amd64/limine.h>
+#include <arch/amd64/gdt.h>
 #include <vt_escape_sequences.h>
 #include <early_alloc.h>
 #include <phys.h>
-#include <stdnoreturn.h>
 #include <panic.h>
 #include <stddef.h>
 #include <ktext.h>
-#include <kernel.h>
 
+#include <kernel.h>
 /*
  * This struct must be volatile to guarantee it is part of the object file;
  * Limine will look for it at boot time and fill in the response field.
@@ -148,6 +150,9 @@ noreturn void start_kernel(void)
 	/* Use Limine to get system info */
 	limine_scan_boot_memmaps();
 	limine_get_kernel_address();
+
+	/* Initialize x86 specific features */
+//	gdt_init();
 
 	/* Call into the platform agnostic portion of the kernel */
 	kernel_main();

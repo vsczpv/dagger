@@ -45,4 +45,4 @@ run: $(NAME)
 	@xorriso -as mkisofs -b limine-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table --efi-boot limine-cd-efi.bin -efi-boot-part --efi-boot-image --protective-msdos-label boot/iso_root -o boot/image.iso 2>/dev/null
 
 	@echo "  QEMU    boot/image.iso"
-	@qemu-system-x86_64 -m 512 -cdrom boot/image.iso
+	@qemu-system-x86_64 -m 512 -cdrom boot/image.iso -no-reboot -no-shutdown
