@@ -2,6 +2,8 @@
 
 #include <arch/amd64/limine.h>
 #include <arch/amd64/gdt.h>
+#include <arch/amd64/com0.h>
+
 #include <vt_escape_sequences.h>
 #include <early_alloc.h>
 #include <phys.h>
@@ -140,6 +142,8 @@ static void limine_get_kernel_address(void)
  */
 noreturn void start_kernel(void)
 {
+
+	com0_initialize_port();
 
 	//TODO: Remove, terminal_request is DEPRECATED
 	/* Limine should've provided a nice high-res vt console for us, so halt the system in case it has failed to do so. */

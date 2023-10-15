@@ -1,14 +1,14 @@
 #ifndef KERNEL_SERIAL_H_
 #define KERNEL_SERIAL_H_
 
-typedef struct serial_interface_port_s
-{
+#include <stdint.h>
 
+struct serial_interface
+{
+	const char* name;
+	void (*write_data)(uint8_t data);
 };
 
-typedef struct serial_interface_s
-{
-
-};
+void serial_write_string(struct serial_interface* port, const char* msg);
 
 #endif // KERNEL_SERIAL_H_

@@ -2,6 +2,7 @@
 #include <limine_services.h>
 #include <minmax.h>
 #include <string.h>
+#include <kernel.h>
 
 void kprint(const char* string)
 {
@@ -14,6 +15,8 @@ void kprint(const char* string)
 	terminal_write(terminal, string, strlen(string));
 
 	/* Serial Port */
+
+	serial_write_string(&kernel_main_serial_port, string);
 
 	return;
 }

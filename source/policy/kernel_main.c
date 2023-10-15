@@ -2,10 +2,13 @@
 #include <stdnoreturn.h>
 #include <return_not.h>
 #include <early_alloc.h>
+#include <serial.h>
 
 /* Where the kernel is */
 void* kernel_physical_base = NULL;
 void* kernel_virtual_base  = NULL;
+
+struct serial_interface kernel_main_serial_port = {0};
 
 /*
  * kernel_main
