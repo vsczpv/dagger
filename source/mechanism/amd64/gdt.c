@@ -124,5 +124,7 @@ void gdt_init(void)
 	/* Load it */
 	gdt_load(0x8, 0x10);
 
+	kprintln("GDT successfully initialized.");
+
 	return;
 }

@@ -142,7 +142,7 @@ noreturn void start_kernel(void)
 	limine_get_kernel_address();
 
 	/* Initialize x86 specific features */
-//	gdt_init();
+	gdt_init();
 
 	/* Call into the platform agnostic portion of the kernel */
 	kernel_main();
