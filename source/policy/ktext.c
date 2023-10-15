@@ -7,13 +7,6 @@
 void kprint(const char* string)
 {
 
-	/* Limine Terminal */
-
-	struct limine_terminal* terminal = terminal_request.response->terminals[0];
-	limine_terminal_write terminal_write = terminal_request.response->write;
-
-	terminal_write(terminal, string, strlen(string));
-
 	/* Serial Port */
 
 	serial_write_string(&kernel_main_serial_port, string);

@@ -12,16 +12,6 @@
 #include <ktext.h>
 
 #include <kernel.h>
-/*
- * This struct must be volatile to guarantee it is part of the object file;
- * Limine will look for it at boot time and fill in the response field.
- */
-volatile struct limine_terminal_request terminal_request =
-{
-	.id = LIMINE_TERMINAL_REQUEST,
-	.revision = 0
-};
-
 
 /*
  * This struct queries boot memory map information
@@ -145,10 +135,6 @@ noreturn void start_kernel(void)
 
 	com0_initialize_port();
 
-	//TODO: Remove, terminal_request is DEPRECATED
-	/* Limine should've provided a nice high-res vt console for us, so halt the system in case it has failed to do so. */
-	if (terminal_request.response == NULL || terminal_request.response->terminal_count < 1) goto critical_early_boot_failure;
-
 	kprintln(VT_BOLD "Dagger 1.0 - Kernel Startup" VT_END);
 
 	/* Use Limine to get system info */
@@ -163,8 +149,9 @@ noreturn void start_kernel(void)
 
 	panic("kernel_main returned.");
 
-critical_early_boot_failure:
-
+	/*
+	critical_early_boot_failure:
 	for (;;) { __asm__ volatile ("cli\nhlt"); }
+	*/
 
 }
