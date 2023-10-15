@@ -1,0 +1,44 @@
+- Research IDT & TSS
+		* I'll need a page fault handler if I plan on playing
+		  with pages. That's obviously the job of the IDT.
+
+
+o
+### Describe the IDT & TSS
+	It seems the IDT is somewhat dependent on the TSS
+	and the Interrupt Stack Table
+
+	The Task Switch Segment is a special entry in the GDT that points to a
+	structure vital to task switching. On older 32-bit x86 it was used to store
+	the state on any interrupted running task, however in x86_64 it was reutili-
+	zed for a different purpose: pointing to the Interrupt Stack Table.
+
+	The Interrupt Stack Table provides stack pointers to usable stacks so that
+	the ISRs don't need to pollute the stacks of their callers.
+
+	Three types of value are present in the IST:
+
+		• RSP#: These are the stacks used when an interrupts causes a privilege
+		escalation. For example, in the case user space calls into the kernel
+		via a syscall, a p. escalation from ring3 → ring0 will occur, loading
+		RSP0 into RSP.
+		• IST#: Similar to RSP#, but is instead used by interrupts that want to
+		specify their own private stack area. [does IST# override RSP#?]
+		• IOPB:
+		[https://pdos.csail.mit.edu/6.828/2008/readings/i386/s08_03.htm]:
+		"... The 80386 has the ability to selectively trap references to speci-
+		fic I/O addresses. The structure that enables selective trapping is the
+		I/O Permission Bit Map in the TSS segment . The I/O permission map is a
+		bit vector."
+		[https://stackoverflow.com/q/54876039]:
+		"If you want no IOPB, you can simply fill the IOPB offset field with the
+		length of your entire TSS structure (do not subtract 1). Your TSS struct-
+		ure should have no trailing 0xff byte in it. The TSS limit in the TSS
+		descriptor (as you already are aware) will be one less than that value.
+		The Intel manuals say that there is no IOPB if the value in the IOPB off-
+		set value is greater than the TSS limit. If the value in the IOPB offset
+		field is always 1 greater than the limit this condition is satisfied.
+		This is how modern Microsoft Windows handles it."
+
+	One theory is that for simple interrupt handling the IST and TSS are not nes-
+	cessary as: no interrupt will specify an IST#; no context switch will happen.

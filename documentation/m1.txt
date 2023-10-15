@@ -5,7 +5,7 @@ Shortterm Goal:
 		- Current memory mappings          ✓
 		- Memory used by bootloader        ✓
 
-	- Write support for loading and setting a GDT       ?
+	- Write support for loading and setting a GDT       ✓
 		* Might be non-trivial at this stage
 		* The goal here would be to just rid off
 		  limine's GDT, while also paving the way
@@ -13,18 +13,26 @@ Shortterm Goal:
 		  16-bit and 32-bit entries on them are
 		  redundant.
 
-	!-Write support for serial port
+	!-Write [initial] support for serial port ✓
 		* Potentially, Limine seems to crash whenever we load a new GDT
-		(lgdt; mov xs, ... word, but the kernel eventually crashes at
+		(lgdt; mov xs, ... work, but the kernel eventually crashes at
 		an address owned by the bootloader, most problably after
 		a call to kprintf()).
 		* We cannot test the GDT until we have an alternative form of output.
 
+	# SCRAPED
+	- Research IDT
+		* I'll need a page fault handler if I plan on playing
+		  with pages. That's obviously the job of the IDT.
+
+	# SCRAPED
 	- Unload limine
 
+	# SCRAPED
 	- Set memory layout sane
 		- Unmap lower addresses mapped by limine
 
+	# SCRAPED
 	- Make a memory manager
 
 This may involve manipulating the "bootloader page tables", as in,
