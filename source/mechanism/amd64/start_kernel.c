@@ -83,7 +83,7 @@ static void limine_scan_boot_memmaps(void)
 		kprintfln("%X %i %s\t%s", e->base, length, unit, type);
 
 		/* We must find a free region of memory that is atleast EARLY_ALLOC_BUDGET bytes in size */
-		if (!ea_pool && e->length > 32*KiB) ea_pool = (void*) (hhdm->offset + e->base);
+		if (!ea_pool && e->length >= EARLY_ALLOC_BUDGET) ea_pool = (void*) (hhdm->offset + e->base);
 
 	}
 
