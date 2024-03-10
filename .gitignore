@@ -3,3 +3,4 @@ cross/*
 build/*
 boot/*
 *.kdev4
+qemu_log.txt
