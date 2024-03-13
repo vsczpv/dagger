@@ -53,10 +53,10 @@ static void limine_scan_boot_memmaps(void)
 	void* ea_pool = NULL;
 
 	/* The kernel cannot continue booting without knowning it's own RAM */
-	if (memmap_request.response == NULL) panic("no memmap request answered");
+	if (memmap_request.response == NULL) panic("no memmap request answered.");
 
 	/* Neither can the kernel continue without knowing where the HHDM is */
-	if (hhdm_request.response == NULL) panic("no HHDM request answered");
+	if (hhdm_request.response == NULL) panic("no HHDM request answered.");
 
 	struct limine_memmap_response* memmap = memmap_request.response;
 	struct limine_hhdm_response*   hhdm   = hhdm_request  .response;
@@ -88,12 +88,12 @@ static void limine_scan_boot_memmaps(void)
 
 	}
 
-	if (!ea_pool) panic("not enough memory to initialize early boot bump allocator");
+	if (!ea_pool) panic("not enough memory to initialize early boot bump allocator.");
 
 	/* Initialize early_alloc */
 	early_alloc_set_memory_pool(ea_pool);
 
-	kprintfln("kernel successfully allocated %i bytes of RAM for early boot", EARLY_ALLOC_BUDGET);
+	kprintfln("limine: successfully allocated %i bytes of RAM for early boot.", EARLY_ALLOC_BUDGET);
 
 	/* Load information into the kernel */
 	pm_set_hhdm((void*) hhdm->offset);
@@ -112,7 +112,7 @@ static void limine_get_kernel_address(void)
 {
 
 	/* The kernel cannot continue booting without knowning it's own address */
-	if (kaddr_request.response == NULL) panic("no kernel address request answered");
+	if (kaddr_request.response == NULL) panic("no kernel address request answered.");
 
 	struct limine_kernel_address_response* kaddr = kaddr_request.response;
 
