@@ -123,6 +123,9 @@ void gdt_load(uint64_t cs, uint64_t ds);
 /* This function creates a new gdt, and replaces Limine's default one with it */
 void gdt_init(void);
 
+#define GDT_KERNEL_CS 0x8
+#define GDT_KERNEL_DS 0x10
+
 #endif // KERNEL_ARCH_AMD64_GDT_H_
 
 

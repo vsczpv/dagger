@@ -93,7 +93,10 @@ void gdt_init(void)
 		0, 0, 0, GDT_ENTRY_AB_DISABLED
 	);
 
-	/* Create kernel's code segment */
+	/*
+	 * Create kernel's code segment
+	 * NOTE: Must be at GDT_KERNEL_CS = 0x8
+	 */
 	kernel_gdt.entries[kernel_gdt.count++] = gdt_entry_create
 	(
 		0x00000000, 0xffffffff,
@@ -107,7 +110,10 @@ void gdt_init(void)
 		GDT_ENTRY_AB_WAS_ACCESSED
 	);
 
-	/* Create kernel's data segment */
+	/*
+	 * Create kernel's data segment
+	 * NOTE: Must be at GDT_KERNEL_DS = 0x10
+	 */
 	kernel_gdt.entries[kernel_gdt.count++] = gdt_entry_create
 	(
 		0x00000000, 0xffffffff,
@@ -122,7 +128,7 @@ void gdt_init(void)
 	);
 
 	/* Load it */
-	gdt_load(0x8, 0x10);
+	gdt_load(GDT_KERNEL_CS, GDT_KERNEL_DS);
 
 	kprintln("GDT successfully initialized.");
 
