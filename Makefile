@@ -31,7 +31,7 @@ $(OBJS_MECHANISM): build/mechanism/$(ARCH)/%.o: source/mechanism/$(ARCH)/%.c $(H
 	@echo "  CC      $@"
 	@$(CC) -c $(CARGS) $< -o $@
 
-$(NAME): $(OBJS_POLICY) $(OBJS_MECHANISM)
+$(NAME): dirs $(OBJS_POLICY) $(OBJS_MECHANISM)
 	@echo "  LD      $@"
 	@$(LD) -s -static -T linker.ld $(OBJS_POLICY) $(OBJS_MECHANISM) $(LIBGCC) -o $@
 
