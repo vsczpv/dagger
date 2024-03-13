@@ -151,9 +151,4 @@ noreturn void start_kernel(void)
 
 	panic("kernel_main returned.");
 
-	/*
-	critical_early_boot_failure:
-	for (;;) { __asm__ volatile ("cli\nhlt"); }
-	*/
-
 }
