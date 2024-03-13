@@ -33,7 +33,7 @@ struct __attribute__ ((packed)) gdt_entry
 
 /* gdt_entry's field masks */
 #define GDT_ENTRY_MASK_LIMIT_LO_PART   0xffff
-#define GDT_ENTRY_MASK_LIMIT_HI_PART   0xff0000
+#define GDT_ENTRY_MASK_LIMIT_HI_PART   0x0f0000
 
 #define GDT_ENTRY_MASK_BASE_LO_PART    0x0000ffff
 #define GDT_ENTRY_MASK_BASE_MI_PART    0x00ff0000
@@ -43,7 +43,7 @@ struct __attribute__ ((packed)) gdt_entry
 #define GDT_ENTRY_SHIFT_LIMIT_HI_PART  16
 #define GDT_ENTRY_SHIFT_BASE_MI_PART   16
 #define GDT_ENTRY_SHIFT_BASE_HI_PART   24
-#define GDT_ENTRY_SHIFT_FLAGS          8
+#define GDT_ENTRY_SHIFT_FLAGS          4
 
 
 

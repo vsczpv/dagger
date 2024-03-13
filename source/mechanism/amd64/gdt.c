@@ -104,7 +104,7 @@ void gdt_init(void)
 		GDT_ENTRY_AB_CODE_SEGMENT       |
 		GDT_ENTRY_AB_CS_RING_MUST_MATCH |
 		GDT_ENTRY_AB_CS_READABLE        |
-		GDT_ENTRY_AB_NOT_ACCESSED
+		GDT_ENTRY_AB_WAS_ACCESSED
 	);
 
 	/* Create kernel's data segment */
@@ -118,7 +118,7 @@ void gdt_init(void)
 		GDT_ENTRY_AB_DATA_SEGMENT |
 		GDT_ENTRY_AB_DS_GROW_UP   |
 		GDT_ENTRY_AB_DS_WRITABLE  |
-		GDT_ENTRY_AB_NOT_ACCESSED
+		GDT_ENTRY_AB_WAS_ACCESSED
 	);
 
 	/* Load it */
