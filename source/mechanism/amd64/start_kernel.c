@@ -2,6 +2,7 @@
 
 #include <arch/amd64/limine.h>
 #include <arch/amd64/gdt.h>
+#include <arch/amd64/idt.h>
 #include <arch/amd64/com0.h>
 
 #include <vt_escape_sequences.h>
@@ -143,6 +144,7 @@ noreturn void start_kernel(void)
 
 	/* Initialize x86 specific features */
 	gdt_init();
+	idt_init();
 
 	/* Call into the platform agnostic portion of the kernel */
 	kernel_main();

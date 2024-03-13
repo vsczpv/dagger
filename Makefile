@@ -10,7 +10,7 @@ HEADERS = $(shell find include -name '*.h' -type f)
 
 DEFINES = -DARCH_$(ARCH)
 CARGS =   -mno-red-zone -fno-pic -mcmodel=kernel -Wall -Wextra -pedantic -std=c2x -nostdlib -ffreestanding -fno-asynchronous-unwind-tables -isysteminclude $(DEFINES) \
-	  -fno-stack-protector -fno-stack-check -fno-lto -fno-pie -mabi=sysv -mno-80387 -mno-mmx -mno-sse -mno-sse2
+	  -fno-stack-protector -fno-stack-check -fno-lto -fno-pie -mabi=sysv -mno-80387 -mno-mmx -mno-sse -mno-sse2 -mgeneral-regs-only
 
 LIBGCC = cross/dest/lib/gcc/x86_64-elf/12.2.0/no-red-zone/libgcc.a
 
