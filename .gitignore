@@ -4,6 +4,7 @@ build/*
 boot/image.iso
 boot/iso_root/*
 *.kdev4
+*.kate-swp
 qemu_log.txt
 .directory
 include/arch/amd64/limine.h
