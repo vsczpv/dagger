@@ -1,7 +1,9 @@
 vmdagger
 cross/*
 build/*
-boot/*
+boot/image.iso
+boot/iso_root/*
 *.kdev4
 qemu_log.txt
 .directory
+include/arch/amd64/limine.h

@@ -22,6 +22,7 @@ all: $(NAME)
 
 dirs:
 	@if [ ! -d "build" ] ; then mkdir build build/policy build/mechanism build/mechanism/$(ARCH) ; fi
+	@if [ ! -d "boot/iso_root" ] ; then mkdir boot/iso_root ; fi
 
 $(OBJS_POLICY): build/policy/%.o: source/policy/%.c $(HEADERS)
 	@echo "  CC      $@"
@@ -39,10 +40,12 @@ clean:
 	@rm -vf $(OBJS_POLICY) $(OBJS_MECHANISM) $(NAME) boot/image.iso boot/iso_root/$(NAME)
 
 run: $(NAME)
+
 	@cp $(NAME) boot/iso_root/$(NAME)
+	@cp boot/limine.cfg boot/iso_root/
 
 	@echo "  XORRISO boot/image.iso"
-	@xorriso -as mkisofs -b limine-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table --efi-boot limine-cd-efi.bin -efi-boot-part --efi-boot-image --protective-msdos-label boot/iso_root -o boot/image.iso 2>/dev/null
+	@xorriso -as mkisofs -b limine-bios-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table --efi-boot limine-uefi-cd.bin -efi-boot-part --efi-boot-image --protective-msdos-label boot/iso_root -o boot/image.iso 2>/dev/null
 
 	@echo "  QEMU    boot/image.iso"
-	@konsole --noclose -e 'bash -c "qemu-system-x86_64 -d guest_errors -m 512M -cdrom boot/image.iso -no-reboot -no-shutdown -nographic 2>qemu_log.txt"'
+	@konsole --noclose -e 'bash -c "qemu-system-x86_64 -d guest_errors -m 512M -cdrom boot/image.iso -no-reboot -no-shutdown -nographic 2>qemu_log.txt"' 2>/dev/null

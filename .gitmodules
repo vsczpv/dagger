@@ -1,5 +1,5 @@
 [submodule "boot/limine"]
 	path = boot/limine
 	url = https://github.com/limine-bootloader/limine.git
-	branch = v4.x-branch-binary
-	shallow = true
+	branch = v7.x-binary
+	shallow = false

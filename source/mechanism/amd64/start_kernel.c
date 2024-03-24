@@ -14,6 +14,9 @@
 
 #include <kernel.h>
 
+/* Selecting the bootloader's revision */
+LIMINE_BASE_REVISION(1)
+
 /*
  * This struct queries boot memory map information
  */
