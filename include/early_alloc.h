@@ -9,19 +9,17 @@
 #define EARLY_ALLOC_BUDGET 2*KiB
 
 /*
- * This is the early boot bump alocator that pools from the raw, unitialized physical pages.
+ * This is the early boot bump alocator that pools from a small, fixed size array.
  * Some heap functionality is needed even at this early bootstage.
  *
  * Granularity is 1 byte, freeing is not possible.
  */
 
-extern uint64_t early_alloc_memory_pool;
-extern ssize_t  early_alloc_remaining;
+extern uint8_t early_alloc_memory_pool[EARLY_ALLOC_BUDGET];
+extern size_t  early_alloc_used;
 
-void  early_alloc_set_memory_pool(void* pool);
-void* early_alloc(size_t size);
-
-ssize_t early_alloc_get_remaining(void);
+void*  early_alloc(size_t size);
+size_t early_alloc_get_remaining(void);
 
 #endif // KERNEL_EARLY_ALLOC_H_
 

@@ -44,8 +44,6 @@ volatile struct limine_kernel_address_request kaddr_request =
 /*
  * This function takes the memmap info from limine and properly loads it into
  * the kernel.
- *
- * It also initializes the early boot bump-allocator.
  */
 static void limine_scan_boot_memmaps(void)
 {
@@ -89,11 +87,6 @@ static void limine_scan_boot_memmaps(void)
 	}
 
 	if (!ea_pool) panic("not enough memory to initialize early boot bump allocator.");
-
-	/* Initialize early_alloc */
-	early_alloc_set_memory_pool(ea_pool);
-
-	kprintfln("limine: successfully allocated %i bytes of RAM for early boot.", EARLY_ALLOC_BUDGET);
 
 	/* Load information into the kernel */
 	pm_set_hhdm((void*) hhdm->offset);
