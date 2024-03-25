@@ -5,7 +5,7 @@ git submodule update --depth 1
 
 cd boot
 cd limine
-git pull --tags --depth 1
+git fetch origin tag v7.1.0-binary --no-tags
 git checkout v7.1.0-binary
 cd ..
 
