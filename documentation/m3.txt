@@ -1,0 +1,131 @@
+- Research physical memory, virtual memory, pagetables
+	* Best way to make a direct physical map
+	* How to manipulate the pagetables
+	* Allocators!
+
+	1) Implement the pages themselves
+		1a) Page Table                   Entry
+		1b) Page Directory               Entry
+		1c) Page Directory Pointer Table Entry
+		1d) Page Map Level 4             Entry
+
+		# Page Table Entry
+
+			 0       Present                           bit [P]
+			 1       Read/Write                        bit [R/W]
+			 2       User/Supervisor          selector bit [U/S]
+			 3       Write-Through/Write-Back selector bit [PWT]
+			 4       Cache disable                     bit [PCD]
+			 5       Accessed                          bit [A]
+			 6       Dirty                             bit [D]
+			 7       Page Attribute Table              bit [PAT]
+			 8       Global                            bit [G]
+			 9 : 11  (Available for OS use)
+			12 : M-1 Physical page upper bits (12:(M-1))
+			 M : 51  Reserved
+			52 : 58  (Available for OS use)
+			59 : 62  Protection Key                        [PK] := 0
+			63       Execute disable                       [XD]
+
+		According to osdev, if PAT is enabled, the PAT, PWT and PCD bits are
+		repurposed as a three-bit index into the PAT MSR register, which offers
+		more caching options, in PAT:PCD:PWT order.
+
+		Limine furthers configures the PAT MSR which the following values:
+
+			PAT0 -> WB
+			PAT1 -> WT
+			PAT2 -> UC-
+			PAT3 -> UC
+			PAT4 -> WP
+			PAT5 -> WC
+			PAT6 -> unspecified
+			PAT7 -> unspecified
+
+		Thus, the following caching combinations are possible:
+
+			PAT = 0, PCD = 0, PWT = 0 → Write-Back
+			PAT = 0, PCD = 0, PWT = 1 → Write-Through
+			PAT = 0, PCD = 1, PWT = 0 → Uncacheable (overridable)
+			PAT = 0, PCD = 1, PWT = 1 → Uncacheable
+			PAT = 1, PCD = 0, PWT = 0 → Write-Protect
+			PAT = 1, PCD = 0, PWT = 1 → Write-Combining
+			PAT = 1, PCD = 1, PWT = 0 is UB
+			PAT = 1, PCD = 1, PWT = 1 is UB
+
+		Protection key support should be disabled by default.
+
+		https://wiki.osdev.org/Paging#PAT
+		https://github.com/limine-bootloader/limine/blob/v7.x/PROTOCOL.md
+
+		# Page Directory Entry
+
+			 0       Present                           bit [P]
+			 1       Read/Write                        bit [R/W]
+			 2       User/Supervisor          selector bit [U/S]
+			 3       Write-Through/Write-Back selector bit [PWT]
+			 4       Cache disable                     bit [PCD]
+			 5       Accessed                          bit [A]
+			 6       (Available for OS use)
+			 7       Page Size                             [PS]  := 0
+			 8 : 11  (Available for OS use)
+			12 : M-1 Physical page upper bits (12:(M-1))
+			 M : 51  Reserved
+			52 : 62  (Available for OS use)
+			63       Execute disable                  bit  [XD]
+
+		# Page Directory Pointer Table Entry
+
+			Identical to PDE.
+
+		# Page Map Level 4 Entry
+
+			Identical to PDE, but bit 7 (PS) is reserved.
+
+		"M signifies the physical address width supported by a processor using
+		PAE. Currently, up to 52 bits are supported, but the actual supported wi-
+		dth may be less. "
+
+		M can be calculating by executing the CPUID.80000008h:EAX[7:0] instruc-
+		tion.
+
+		Current layout is as follows:
+
+			- A bunch of random mappings all over the place, known only by phys-
+			map_descriptor.
+			- Our kernel, at 0xfffffff800000000. Physical location given by Limine.
+			- Supposedly, the HHDM should be a higher half direct physical -> virtual
+			mapping given by Limine, however nothing I do makes it actually be
+			in the higher half of the addressing space. Thus, we'll not use it.
+
+		It would also seem that:
+
+			- Each table holds a page worth of entries. With entries being eight
+			bytes in size, thats 4KiB per table, or a page. In summary:
+
+				* The (singular) PML4, with 512 entries, consumes 4KiB   of vaddr.
+				* The PDPT tables,     with 512²entries, consumes 2MiB   of vaddr.
+				* The PD   tables,     with 512³entries, consumes 1GiB   of vaddr.
+				* The PT   tables,     with 512⁴entries, consumes 512GiB of vaddr.
+
+		Our goal is:
+
+			- Unmap everything from positive 128TiB region, making space for
+			userspace.
+			- Map the following in the negative 128TiB region:
+
+				* Our higher half direct map (self made, not Limine's) (len 64TiB)
+				  @ 0xffff000000000000 until 0xffffbfffffffffff
+
+				* Our pagetables @ 0xffffc00000000000 (len ~513GiB)
+
+					→ PML4 : 0xffffc00000000000 (len 4KiB 0x1000)
+					   until 0xffffc00000000fff
+					→ PDPT : 0xffffc00000001000 (len 2MiB 0x200000)
+					   until 0xffffc00000200fff
+					→ PD   : 0xffffc00000201000 (len 1GiB)
+					   until 0xffffc00040200fff
+					→ PT   : 0xffffc00040201000 (len 512GiB)
+					   until 0xffffc08040200fff
+
+				* Our kernel     @ 0xfffffff800000000 (len 64MiB 0x4000000)
