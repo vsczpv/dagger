@@ -86,7 +86,7 @@
 		PAE. Currently, up to 52 bits are supported, but the actual supported wi-
 		dth may be less. "
 
-		M can be calculating by executing the CPUID.80000008h:EAX[7:0] instruc-
+		M can be calculated by executing the CPUID.80000008h:EAX[7:0] instruc-
 		tion.
 
 		Current layout is as follows:
@@ -128,4 +128,76 @@
 					→ PT   : 0xffffc00040201000 (len 512GiB)
 					   until 0xffffc08040200fff
 
-				* Our kernel     @ 0xfffffff800000000 (len 64MiB 0x4000000)
+				* Our kernel     @ 0xfffffff800000000 (len 64MiB  0x04000000)
+				* vmalloc area   @ 0xfffffff804000000 (len 256MiB 0x10000000)
+				* physpage stack @ 0xfffffff804000000 (len (PHYS_AMNT / 4KiB) * 8 [MAX 512GiB])
+
+		To convert a virtual address to a physical address, you take it, subdiv-
+		ive the address into the respective pagetable indices, walk it and then
+		retrieve the physical address.
+
+		"vmalloc area" is the virtual address range where all memory allocated
+		for kernel use shall be put into. As the name suggest, the vmalloc() se-
+		ries of calls are responsable for this region. Userspace allocations will
+		be handled separately.
+
+		"physpage stack" is where we will put the physical memory page metadata.
+		As the name indicates, version 1 of Dagger will use a stack to manage
+		physical memory. As per osdev, "The address of each available physical
+		frame is stored in a stack-like dynamic structure. Allocating a page is
+		fast (O(1)), freeing a page too but checking the state of a page is not
+		practical, unless additional metadata is sorted by physical address."
+
+		https://wiki.osdev.org/Page_Frame_Allocation
+
+		The following functions shall define our vmalloc api:
+
+			- void  vmalloc_enumerate(void* base, size_t count);
+				This will push 'count' pages into the physpage stack,
+				with the phys addr starting at base. Region must be
+				contiguous.
+
+				This function can fail silently. Exacerbate caution.
+
+				'base' must be aligned to 4KiB. 'count' must be non-zero. The
+				entire region denoted by 'base:count' must point to a valid set
+				of free physical pages.
+
+			- void* vmalloc_phys_take(void);
+				This will pop a physpage from the physpage stack.
+
+				This function will return the physical address of a free phys-
+				ical page, or return NULL to indicate we're out of memory.
+
+			- void vmalloc_phys_give(void* physaddr)
+				This will push a physpage to the physpage stack.
+
+				This function can panic() the system if too much memory is pushed.
+
+			- void* vmalloc(size_t count)
+				This function will allocate 'count' pages of physical memory and
+				map them into the vmalloc area. Physical pages may be disconti-
+				guous, but the virtual range will be contiguous.
+
+				'count' must be non zero.
+
+				This function will either return the address to a newly allocated
+				memory region in the vmalloc area, or return an error.
+
+				· ENOMEM → Not enough physical memory
+				· EINVAL → Count is 0.
+
+				Note that vmalloc area pointers are negative, such one can test
+				for errors by casting as signed and checking if 'x => 0'.
+
+			- void vfree(void* vaddr, size_t count);
+
+				This function takes 'count' contiguous virtual pages starting
+				at vaddr and frees, walking the pagetables to get the physical
+				addresses.
+
+				'vaddr:count' must point to pages allocated with
+				vmalloc().
+
+				This function panic()s the system if 'vaddr:count' points to
+				alteast one page that was not allocated with vmalloc().
