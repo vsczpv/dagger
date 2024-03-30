@@ -115,22 +115,27 @@
 			- Map the following in the negative 128TiB region:
 
 				* Our higher half direct map (self made, not Limine's) (len 64TiB)
-				  @ 0xffff000000000000 until 0xffffbfffffffffff
+				  @ 0xffff'1000'0000'0000 until 0xffff'4fff'ffff'ffff
 
-				* Our pagetables @ 0xffffc00000000000 (len ~513GiB)
+				* Our pagetables @ 0xffff'6000'0000'0000 (len ~513GiB)
+				             until 0xffff'6080'4020'0fff
 
-					→ PML4 : 0xffffc00000000000 (len 4KiB 0x1000)
-					   until 0xffffc00000000fff
-					→ PDPT : 0xffffc00000001000 (len 2MiB 0x200000)
-					   until 0xffffc00000200fff
-					→ PD   : 0xffffc00000201000 (len 1GiB)
-					   until 0xffffc00040200fff
-					→ PT   : 0xffffc00040201000 (len 512GiB)
-					   until 0xffffc08040200fff
+					→ PML4 : 0xffff'6000'0000'0000 (len 4KiB 0x1000)
+					   until 0xffff'6000'0000'0fff
+					→ PDPT : 0xffff'6000'0000'1000 (len 2MiB 0x200000)
+					   until 0xffff'6000'0020'0fff
+					→ PD   : 0xffff'6000'0020'1000 (len 1GiB)
+					   until 0xffff'6000'4020'0fff
+					→ PT   : 0xffff'6000'4020'1000 (len 512GiB)
+					   until 0xffff'6080'4020'0fff
 
-				* Our kernel     @ 0xfffffff800000000 (len 64MiB  0x04000000)
-				* vmalloc area   @ 0xfffffff804000000 (len 256MiB 0x10000000)
-				* physpage stack @ 0xfffffff804000000 (len (PHYS_AMNT / 4KiB) * 8 [MAX 512GiB])
+				* physpage stack @ 0xffff'7000'0000'0000 (len (PHYS_AMNT / 4KiB) * 8 [MAX 512GiB])
+				             until 0xffff'707f'ffff'ffff
+
+				* Our kernel     @ 0xffff'ffff'8000'0000 (len 64MiB  0x0400'0000)
+				             until 0xffff'ffff'83ff'fff
+				* vmalloc area   @ 0xffff'ffff'8400'0000 (len 256MiB 0x1000'0000)
+				             until 0xffff'ffff'93ff'ffff
 
 		To convert a virtual address to a physical address, you take it, subdiv-
 		ive the address into the respective pagetable indices, walk it and then
