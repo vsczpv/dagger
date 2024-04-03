@@ -98,16 +98,6 @@
 			mapping given by Limine, however nothing I do makes it actually be
 			in the higher half of the addressing space. Thus, we'll not use it.
 
-		It would also seem that:
-
-			- Each table holds a page worth of entries. With entries being eight
-			bytes in size, thats 4KiB per table, or a page. In summary:
-
-				* The (singular) PML4, with 512 entries, consumes 4KiB   of vaddr.
-				* The PDPT tables,     with 512²entries, consumes 2MiB   of vaddr.
-				* The PD   tables,     with 512³entries, consumes 1GiB   of vaddr.
-				* The PT   tables,     with 512⁴entries, consumes 512GiB of vaddr.
-
 		Our goal is:
 
 			- Unmap everything from positive 128TiB region, making space for
@@ -117,20 +107,8 @@
 				* Our higher half direct map (self made, not Limine's) (len 64TiB)
 				  @ 0xffff'1000'0000'0000 until 0xffff'4fff'ffff'ffff
 
-				* Our pagetables @ 0xffff'6000'0000'0000 (len ~513GiB)
-				             until 0xffff'6080'4020'0fff
-
-					→ PML4 : 0xffff'6000'0000'0000 (len 4KiB 0x1000)
-					   until 0xffff'6000'0000'0fff
-					→ PDPT : 0xffff'6000'0000'1000 (len 2MiB 0x200000)
-					   until 0xffff'6000'0020'0fff
-					→ PD   : 0xffff'6000'0020'1000 (len 1GiB)
-					   until 0xffff'6000'4020'0fff
-					→ PT   : 0xffff'6000'4020'1000 (len 512GiB)
-					   until 0xffff'6080'4020'0fff
-
-				* physpage stack @ 0xffff'7000'0000'0000 (len (PHYS_AMNT / 4KiB) * 8 [MAX 512GiB])
-				             until 0xffff'707f'ffff'ffff
+				* physpage stack @ 0xffff'6000'0000'0000 (len (PHYS_AMNT / 4KiB) * 8 [MAX 512GiB])
+				             until 0xffff'607f'ffff'ffff
 
 				* Our kernel     @ 0xffff'ffff'8000'0000 (len 64MiB  0x0400'0000)
 				             until 0xffff'ffff'83ff'fff
@@ -155,9 +133,49 @@
 
 		https://wiki.osdev.org/Page_Frame_Allocation
 
-		The following functions shall define our vmalloc api:
+		The following functions shall define our paging api:
 
-			- void  vmalloc_enumerate(void* base, size_t count);
+			- void  pages_apply(void);
+				This function will make visible to the system changes
+				made to the pagetables by invalidating the TLB. Note that the chan-
+				ges may be visible prior to this call in the rare case the TLB inva-
+				lidates itself.
+
+			- void  pages_map  (void* phys_addr, void* vaddr);
+				Maps physical 'phys_addr' → virtual 'vaddr'
+
+			- void  pages_unmap(void* vaddr);
+				Undos virtual 'vaddr'.
+
+			- void* pages_peek(void* vaddr);
+				This function will check the pagetable entry that populates virtual address
+				'vaddr' and return it's physical address. It shall return NULL if 'vaddr' is not
+				mapped.
+
+			- void* pages_getentry(void* vaddr)
+				This function will get the virtual address of the entry that maps to 'vaddr'. If
+				'vaddr' is not mapped then it will return NULL.
+
+			- int   pages_walk(void* entry, struct pagewalk_result* result)
+				This function will walk the pagetables, starting at page entry address 'entry', then:
+
+				* Return if there is a next entry.
+				 · 0      is no next entry
+				 · -1     if    next entry
+				 · EINVAL if 'vaddr' points to nowhere.
+
+				* Information about the current entry will be available in 'result'.
+
+				Setting 'result' to NULL is undefined behaviour.
+
+				// TODO: define struct pagewalk_result, thought atleast phys_addr and the pointer to the
+				         next entry will be there. There must be a pointer to the next entry as the page-
+				         tables are not necessarily contiguous.
+
+
+		The following functions shall define our physpage api:
+			
+			- void  phys_enumerate(void* base, size_t count);
 				This will push 'count' pages into the physpage stack,
 				with the phys addr starting at base. Region must be
 				contiguous.
@@ -168,16 +186,22 @@
 				entire region denoted by 'base:count' must point to a valid set
 				of free physical pages.
 
-			- void* vmalloc_phys_take(void);
+			- void* phys_pop(void)
 				This will pop a physpage from the physpage stack.
 
 				This function will return the physical address of a free phys-
 				ical page, or return NULL to indicate we're out of memory.
 
-			- void vmalloc_phys_give(void* physaddr)
+			- void phys_push(void* physaddr)
 				This will push a physpage to the physpage stack.
 
+				'physaddr' should be a page acquired with phys_pop(), doing other-
+				wise is undefined behaviour.
+
 				This function can panic() the system if too much memory is pushed.
+
+
+		The following functions shall define our vmalloc api:
 
 			- void* vmalloc(size_t count)
 				This function will allocate 'count' pages of physical memory and

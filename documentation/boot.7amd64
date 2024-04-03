@@ -1,0 +1,101 @@
+.TH boot 7amd64 2024-04-03 "Dagger man-pages 1.0" "Dagger Kernel Internal Documentation"
+.SH NAME
+boot \- dagger kernel's early boot procedures (for AMD64)
+.SH SYNOPSIS
+Boot procedures.
+.SH DESCRIPTION
+The boot process is responsible for putting the kernel in a sane state
+so that the policy layer can start managing the machine in a platform
+agnostic way.
+.SS Machine State at Entry
+The kernel is loaded on AMD64 with the "Limine" bootloader. Limine sets
+up the machine by providing a dummy Global Descriptor Table that
+describes three sets of code/data descriptors, one for each word-width
+(16-bit, 32-bit and 64-bit); they are all flat descriptors. Limine does
+not set up an Interrupt Descriptor Table. All segments registers have
+a valid segment loaded at entry. Limine also specifies:
+.RS 4
+.P
+"IF flag, VM flag, and direction flag are cleared on entry. Other flags 
+undefined.
+PG is enabled (cr0), PE is enabled (cr0), PAE is enabled (cr4), WP is 
+enabled (cr0), LME is enabled (EFER), NX is enabled (EFER) if available. 
+If 5-level paging is requested and available, then 5-level paging is 
+enabled (LA57 bit in cr4)."
+.RE
+.P
+Limine also masks all interrupts and exits the EFI boot services. A
+64KiB stack is provided in bootloader reclaimable memory.
+Limine enables paging and provides the following virtual memory layout
+at boot:
+.TS
+Lb Lb Lb .
+Base Physical Address	Description	Base Virtual Address
+_
+0x0000'0000'0000'0000	4GiB + Kernel + Requests	HHDM start
+_
+.TE
+.P
+That is, Limine does a flat map of physical memory starting at phys 0x0
+and maps 4GiB worth of memory, plus the kernel and subsequent requests,
+at virtual address "HHDM start". Experimentations from our part suggests
+that "HHDM start" is always 0x0. However, it is still needed to factor
+this offset in the case it is not.
+.P
+Limine takes the kernel as a standard ELF executable and will loads it at
+virtual address 0xFFFF'FFFF'8000'0000, at an unspecified physical location.
+.SS Limine Requests
+Limine permits it's loadees to specify "requests", to which it will attempt
+to fulfill. This requests come in the form of a volatile struct that is
+to be put in the kernel's data segment, with a magic value specified by
+Limine set inside it. Limine will then scan the kernel for such structs
+and: 1) Perform them; 2) Write any possible results back into the struct.
+.P
+Currently, Dagger performs the following requests to Limine:
+.IP \[bu]
+LIMINE_MEMMAP_REQUEST \- This requests from Limine a structure containing
+a map of all available physical memory in the system. Limine responds 
+with such list, plus it's status.
+.IP \[bu]
+LIMINE_HHDM_REQUEST \- This requests from Limine the start address of
+the Higher Half Direct Map.
+.IP \[bu]
+LIMINE_KERNEL_ADDRESS_REQUEST \- This request from Limine the kernel's
+physical address and virtual address. The virtual address stays constant
+through out boots, but the physical address can change.
+.P
+For the memory map request, any given entry can be in any of the following
+states:
+.IP \[bu]
+Usable \- This memory chunk is ready to be used.
+.IP \[bu]
+Reserved \- This physical address area is not usable due to architectural
+constraints.
+.IP \[bu]
+ACPI Reclaimable \- ACPI Tables.
+.IP \[bu]
+ACPI Non Volatile Storage \- EFI Variables; other BIOS-related state keeping.
+.IP \[bu]
+Bad Memory \- Unusable memory.
+.IP \[bu]
+Bootloader Reclaimable \- Usable memory in which Limine Resides.
+.IP \[bu]
+Kernel \- Dagger.
+.IP \[bu]
+Frame buffer \- Limine optionally can initialize a graphical frame buffer
+to it's loadees.
+.P
+.SS Start_Kernel()
+The kernel's entry point on AMD64 is 
+.I source/mechanism/amd64/start_kernel.c:start_kernel().
+Currently, it initializes a serial port, collects the results from the
+Limine requests, replaces Limine's GDT with our own, initializes the IDT
+with some dummy handlers, and then yields to the platform agnostic
+.I kernel_main().
+.P
+The GDT that is loaded contains a single pair of 64-bit flat code/data 
+segments.
+.P
+More is to be done in start_kernel, specially paging initialization.
+.SH SEE ALSO
+https://github.com/limine-bootloader/limine/blob/v7.x/PROTOCOL.md, https://wiki.osdev.org/Limine_Bare_Bones, boot(7amd64)/annex{1,2,3}

@@ -1,3 +1,0 @@
-Shortterm goals:
-
-	Research IDT, ISR and TSS, plus how they interact with each other.
