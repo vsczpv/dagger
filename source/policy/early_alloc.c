@@ -34,7 +34,7 @@ void* early_alloc(size_t size)
 
 	early_alloc_used      += size;
 
-	if (early_alloc_used > EARLY_ALLOC_BUDGET) panic("kernel out of memory (early boot bump allocator)");
+	if (early_alloc_used > EARLY_ALLOC_BUDGET) panic("kernel out of memory (early boot bump allocator).");
 
 	return allc;
 }
