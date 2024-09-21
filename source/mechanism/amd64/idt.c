@@ -93,6 +93,36 @@ void idt_init(void)
 	for (size_t i = 0; i < IDT_MAX_ENTRIES; i++)
 		kernel_idt.entries[kernel_idt.count++] = idt_entry_create_dummy();
 
+	kernel_idt.entries[X86_ISR_PAGEFAULT] = idt_entry_create
+	(
+		(uint64_t) isr_page_fault_entry,
+		GDT_KERNEL_CS,
+		IDT_ENTRY_ISTID_NONE,
+		IDT_ENTRY_TA_GATE_TYPE_TRAP,
+		IDT_ENTRY_TA_DPL_RING0,
+		IDT_ENTRY_TA_PRESENT
+	);
+
+	kernel_idt.entries[X86_ISR_DOUBLEFAULT] = idt_entry_create
+	(
+		(uint64_t) isr_double_fault_entry,
+		GDT_KERNEL_CS,
+		IDT_ENTRY_ISTID_NONE,
+		IDT_ENTRY_TA_GATE_TYPE_TRAP,
+		IDT_ENTRY_TA_DPL_RING0,
+		IDT_ENTRY_TA_PRESENT
+	);
+
+	kernel_idt.entries[X86_ISR_GPF] = idt_entry_create
+	(
+		(uint64_t) isr_gpf_entry,
+		GDT_KERNEL_CS,
+		IDT_ENTRY_ISTID_NONE,
+		IDT_ENTRY_TA_GATE_TYPE_TRAP,
+		IDT_ENTRY_TA_DPL_RING0,
+		IDT_ENTRY_TA_PRESENT
+	);
+
 	/* Load idt */
 	idt_load();
 
