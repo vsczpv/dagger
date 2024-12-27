@@ -42,6 +42,12 @@ int ksnprintf(char str[], size_t size, const char* restrict format, ...)
 	return res;
 }
 
+/*
+ * i - decimal unsigned 32
+ * x - hexadecimal 32
+ * X - hexadecimal 64
+ * s - cstring
+ */
 int kvsnprintf(char str[], size_t size, const char* restrict format, va_list va)
 {
 
@@ -110,7 +116,7 @@ int kvsnprintf(char str[], size_t size, const char* restrict format, va_list va)
 				case 'X':
 				{
 					char result[XTOSTR_ARRAY_SIZE];
-					lxtostr(result, va_arg(va, int));
+					lxtostr(result, va_arg(va, long int));
 
 					int j = 0;
 
