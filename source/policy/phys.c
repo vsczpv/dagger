@@ -56,10 +56,47 @@ void pm_add_map(void* base, size_t length, enum physmap_type type)
 	map->base   = base;
 	map->length = length;
 	map->type   = type;
+	map->reaped = false;
 
 	physmap_descriptor.map_count++;
 
 	if (physmap_descriptor.map_count > physmap_descriptor.capacity) panic("overflow in physmap_descriptor");
 
 	return;
+}
+
+struct physmap* pm_find_physmap_with_atleast(size_t length)
+{
+
+	for (size_t i = 0; i < physmap_descriptor.map_count; i++)
+	{
+		struct physmap* map = &physmap_descriptor.maps[i];
+		if (map->length >= length) {
+			return map;
+		}
+	}
+
+	return NULL;
+}
+
+struct physmap* pm_find_physmap_highest_usable(void)
+{
+
+	static struct physmap dummy = { .base = 0x0 };
+	struct physmap* map = &dummy;
+
+	for (size_t i = 0; i < physmap_descriptor.map_count; i++)
+	{
+		struct physmap* candidate = &physmap_descriptor.maps[i];
+		if (candidate->type == pm_Usable || candidate->type == pm_Bootloader_Reclaimable)
+		{
+			if (candidate->base > map->base)
+				map = candidate;
+		}
+	}
+
+	if (map == &dummy)
+		return NULL;
+	else
+		return map;
 }

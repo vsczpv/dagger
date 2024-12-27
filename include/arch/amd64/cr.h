@@ -18,36 +18,15 @@
  *
  */
 
-#include <ktext.h>
-#include <stdnoreturn.h>
-#include <return_not.h>
-#include <early_alloc.h>
-#include <serial.h>
+#ifndef KERNEL_ARCH_AMD64_CR_H_
+#define KERNEL_ARCH_AMD64_CR_H_
 
-/* Where the kernel is */
-void* kernel_physical_base = NULL;
-void* kernel_virtual_base  = NULL;
+#include <arch/amd64/pagetables.h>
 
-struct serial_interface kernel_main_serial_port = {0};
+intptr_t __read_cr3  (void);
+void     __write_cr3 (intptr_t);
 
-size_t kernel_size = 0;
-size_t total_physical_memory = 0;
-size_t available_physical_memory = 0;
-size_t used_physical_memory = 0;
+#endif // KERNEL_ARCH_AMD64_CR_H_
 
-/*
- * kernel_main
- *
- * Self explanatory - The kernel's main function.
- *
- * Note that this is not the entry point, but mechanism/ARCH/start_kernel.c
- */
-noreturn void kernel_main(void)
-{
 
-	kprintfln("kernel made through early boot with %i bytes to spare.", early_alloc_get_remaining());
 
-//	* (volatile int*) NULL = 0xdeadbeef;
-
-	return_not;
-}

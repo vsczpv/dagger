@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 /*
  * The type of an physmap.
@@ -53,6 +54,7 @@ struct physmap
 	void*             base;
 	size_t            length;
 	enum physmap_type type;
+	bool              reaped;
 };
 
 /*
@@ -70,6 +72,18 @@ void pm_set_hhdm(void* hhdm);
 
 void pm_allocate_table(unsigned int count);
 void pm_add_map       (void* base, size_t length, enum physmap_type type);
+
+struct physmap* pm_find_physmap_with_atleast(size_t length);
+struct physmap* pm_find_physmap_highest_usable(void);
+
+/* Was supposed to befined in the linker script and later backed using vm
+ * but apparently the linker hates when you give it an address that's farther
+ * from pc than 2GiB. */
+#define PHYSFRAME_STACK_MAX_ENTRIES (17179869184)
+#define PHYSFRAME_STACK_LOCATION    ((intptr_t) 0xffff'f000'0000'0000)
+#define PHYSFRAME_STACK_GETPTR() ((intptr_t*) PHYSFRAME_STACK_LOCATION)
+
+//extern intptr_t* (physframe_stack[PHYSFRAME_STACK_MAX_ENTRIES]);
 
 #endif // KERNEL_PHYS_H
 

@@ -24,6 +24,7 @@
 #include <arch/amd64/gdt.h>
 #include <arch/amd64/idt.h>
 #include <arch/amd64/com0.h>
+#include <arch/amd64/pagetables.h>
 
 #include <vt_escape_sequences.h>
 #include <early_alloc.h>
@@ -71,8 +72,6 @@ volatile struct limine_kernel_address_request kaddr_request =
 static void limine_scan_boot_memmaps(void)
 {
 
-	void* ea_pool = NULL;
-
 	/* The kernel cannot continue booting without knowning it's own RAM */
 	if (memmap_request.response == NULL) panic("no memmap request answered.");
 
@@ -95,21 +94,28 @@ static void limine_scan_boot_memmaps(void)
 		size_t length = e->length;
 		char*  unit   = "bytes";
 
-		if      (length >= GiB) unit = "GiB", length /=  GiB;
-		else if (length >= MiB) unit = "MiB", length /=  MiB;
-		else if (length >= KiB) unit = "KiB", length /=  KiB;
+		if (e->type == LIMINE_MEMMAP_KERNEL_AND_MODULES)
+		{
+			if (length >= KERNEL_MAX_SIZE)
+				panic("kernel too large");
+			kernel_size = length;
+		}
+
+		else if (e->type == LIMINE_MEMMAP_USABLE || e->type == LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE)
+		{
+			available_physical_memory += e->length;
+		}
 
 		static char* types[] = {"usable", "reserved", "acpi reclaimable", "acpi nvs", "bad memory", "bootloader reclaimable", "kernel", "framebuffer"};
 		char* type    = types[e->type];
 
+		if      (length >= GiB) unit = "GiB", length /=  GiB;
+		else if (length >= MiB) unit = "MiB", length /=  MiB;
+		else if (length >= KiB) unit = "KiB", length /=  KiB;
+
 		kprintfln("%X %i %s\t%s", e->base, length, unit, type);
 
-		/* We must find a free region of memory that is atleast EARLY_ALLOC_BUDGET bytes in size */
-		if (!ea_pool && e->length >= EARLY_ALLOC_BUDGET) ea_pool = (void*) (hhdm->offset + e->base);
-
 	}
-
-	if (!ea_pool) panic("not enough memory to initialize early boot bump allocator.");
 
 	/* Load information into the kernel */
 	pm_set_hhdm((void*) hhdm->offset);
@@ -120,6 +126,9 @@ static void limine_scan_boot_memmaps(void)
 		struct limine_memmap_entry* e = memmap->entries[i];
 		pm_add_map((void*) e->base, (size_t) e->length, (enum physmap_type) e->type);
 	}
+
+	total_physical_memory = available_physical_memory + kernel_size;
+	kprintfln("physmgr: %i bytes enumerated, %i usable", total_physical_memory, available_physical_memory);
 
 	return;
 }
@@ -137,22 +146,40 @@ static void limine_get_kernel_address(void)
 
 	kprintf("kernel physical %X\nkernel virtual  %X\n", kernel_physical_base, kernel_virtual_base);
 
+	if ((intptr_t) kernel_virtual_base != (intptr_t) 0xFFFFFFFF80000000)
+		panic("kernel in unexpected virtual address.");
+
 	return;
 }
 
+volatile uint8_t __attribute__ ((aligned(4*KiB))) kernel_stack[32*KiB];
+
+__attribute__ ((naked)) noreturn void start_kernel(void)
+{
+	__asm__ volatile
+	(
+		"movq	%0, %%rsp\n"
+		"call	start_kernel2\n"
+		:
+		: "a" (kernel_stack)
+		:
+	);
+}
+
 /*
- * start_kernel
+ * start_kernel2
  *
  * This is the amd64 entrypoint.
  *
  * After the conclusion of platform specific initialization, it jumps to kernel_main().
  */
-noreturn void start_kernel(void)
+noreturn void start_kernel2(void)
 {
 
 	com0_initialize_port();
 
 	kprintln(VT_BOLD "Dagger 1.0 - Kernel Startup" VT_END);
+	kprintfln("kernel stack at %X", &kernel_stack);
 
 	/* Use Limine to get system info */
 	limine_scan_boot_memmaps();
@@ -161,6 +188,9 @@ noreturn void start_kernel(void)
 	/* Initialize x86 specific features */
 	gdt_init();
 	idt_init();
+
+	/* Switch from limine's pagetables to ours */
+	pagetable_bootstrap_tables();
 
 	/* Call into the platform agnostic portion of the kernel */
 	kernel_main();
