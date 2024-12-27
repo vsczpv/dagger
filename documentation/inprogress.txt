@@ -31,7 +31,7 @@
 		repurposed as a three-bit index into the PAT MSR register, which offers
 		more caching options, in PAT:PCD:PWT order.
 
-		Limine furthers configures the PAT MSR which the following values:
+		Limine furthers configures the PAT MSR with the following values:
 
 			PAT0 -> WB
 			PAT1 -> WT
@@ -104,11 +104,11 @@
 			userspace.
 			- Map the following in the negative 128TiB region:
 
-				* Our higher half direct map (self made, not Limine's) (len 64TiB)
-				  @ 0xffff'1000'0000'0000 until 0xffff'4fff'ffff'ffff
+				* Our higher half direct map (self made, not Limine's) (len 64TiB) (512GiB actual)
+				  @ 0xffff'9000'0000'0000 until 0xffff'dfff'ffff'ffff
 
-				* physpage stack @ 0xffff'6000'0000'0000 (len (PHYS_AMNT / 4KiB) * 8 [MAX 512GiB])
-				             until 0xffff'607f'ffff'ffff
+				* physframestack @ 0xffff'f000'0000'0000 (len (PHYS_AMNT / 4KiB) * 8 [MAX 128GiB]) (2MiB max actual)
+				             until 0xffff'f01f'ffff'ffff
 
 				* Our kernel     @ 0xffff'ffff'8000'0000 (len 64MiB  0x0400'0000)
 				             until 0xffff'ffff'83ff'fff
@@ -135,71 +135,163 @@
 
 		The following functions shall define our paging api:
 
-			- void  pages_apply(void);
-				This function will make visible to the system changes
-				made to the pagetables by invalidating the TLB. Note that the chan-
-				ges may be visible prior to this call in the rare case the TLB inva-
-				lidates itself.
+			- int punmap_frames(size_t count, void* virt, void* phys[]);
+			/**
+			 * int punmap_frames (size_t count, void* virt, void** phys); -- Unmap `count` virtual address pages and store respective physical pages on `phys`.
+			 *
+			 * This function is used to disassociate physical memory from virtual memory. It unmaps any
+			 * virtual memory starting at `virt` up to `virt + PAGE_SIZE * count` and stores the physical address
+			 * once-pointed-by in the array pointed by `phys`.
+			 *
+			 * If `phys` is NULL the physical addresses are not stored.
+			 *
+			 * Errors:
+			 *  EINVAL - `virt` is NULL; `count` is zero.
+			 *  EFAULT - Either `virt` or `phys` are not aligned to PAGE_SIZE.
+			 *
+			 */
 
-			- void  pages_map  (void* phys_addr, void* vaddr);
-				Maps physical 'phys_addr' → virtual 'vaddr'
+			- int pmap_frames(size_t count, void* virt, void* phys[]);
+			/**
+			 * int pmap_frames(size_t count, void* virt, void* phys[]); -- Map `count` virtual address pages into `count` physical frames.
+			 *
+			 * This function is used to map a series of non-contiguous physical frames into a equally sized and
+			 * contiguous virtual address range. It applies to the page tables immediatly.
+			 *
+			 * Errors:
+			 *  EINVAL - Either `virt` or `phys` are NULL, and element of `phys` is NULL or `count` is zero.
+			 *  EFAULT - Either `virt` or `phys` are not aligned to PAGE_SIZE.
+			 *
+			 * Example:
+			 * {
+			 *     // Preferably one should check if pop_frame() actually returned memory.
+			 *     void* phys[4];
+			 *     phys[0] = pop_frame();
+			 *     phys[1] = pop_frame();
+			 *     phys[2] = pop_frame();
+			 *     phys[3] = pop_frame();
+			 *     int err = pmap_frames(4, 0xcafe0000, phys);
+			 *     // Assuming pmap_frames() succeded, `0xdeadcafe` is now a valid address
+			 *     // pointing to four contiguous pages of virtual memory, backed by four frames of physical memory.
+			 *     ((int*) phys[0]) = 1234;
+			 * }
+			 */
 
-			- void  pages_unmap(void* vaddr);
-				Undos virtual 'vaddr'.
+			- int pmap_frame_range(size_t count, void* virt, void* phys);
+			/**
+			 * int pmap_frame_range (size_t count, void* virt, void* phys); -- Map `count` virtual address pages to the contiguous physical memory `phys`.
+			 *
+			 * This function is used to map a physical memory range into a virtual address range.
+			 * It maps `count` contiguous frames starting at `phys` into a contiguous range starting
+			 * at `virt`. It applies to the page tables immediatly.
+			 *
+			 * Errors:
+			 *  EINVAL - Either `virt` or `phys` are NULL or `count` is zero.
+			 *  EFAULT - Either `virt` or `phys` are not aligned to PAGE_SIZE.
+			 *
+			 * Example:
+			 * {
+			 *     // Assume 0xf00fb000 is the physical address of some hardware register
+			 *     // Assume 0xff..f000 is an previously allocated virtual address.
+			 *     // Both are four pages long
+			 *     void* phys = 0xf00fb000, *virt = 0xff..f000;
+			 *     int err = pmap_frame_range(4, virt, phys);
+			 * }
+			 */
 
-			- void* pages_peek(void* vaddr);
+			- void* pg_peek(void* vaddr);
 				This function will check the pagetable entry that populates virtual address
 				'vaddr' and return it's physical address. It shall return NULL if 'vaddr' is not
 				mapped.
 
-			- void* pages_getentry(void* vaddr)
-				This function will get the virtual address of the entry that maps to 'vaddr'. If
-				'vaddr' is not mapped then it will return NULL.
+			Next is some architecture specific function prototypes, not to be documented here:
 
-			- int   pages_walk(void* entry, struct pagewalk_result* result)
-				This function will walk the pagetables, starting at page entry address 'entry', then:
+				x86pg_map_frames      (void* virt_begin, void* virt_end, void* phys[],     struct pgdesc* desc)
+				x86pg_map_frame_range (void* virt_begin, void* virt_end, void* phys_begin, struct pgdesc* desc)
+				x86pg_unmap_frames    (void* virt_begin, void* virt_end, void* phys[])
 
-				* Return if there is a next entry.
-				 · 0      is no next entry
-				 · -1     if    next entry
-				 · EINVAL if 'vaddr' points to nowhere.
+				__pml4_map_frames (struct pml4e pml4[], void* virt_begin, void* virt_end, void* phys[], struct pgdesc* desc)
+				__pdpt_map_frames (struct pdpte pdpt[], void* virt_begin, void* virt_end, void* phys[], struct pgdesc* desc, size_t pidx)
+				__pd_map_frames   (struct pde   pd  [], void* virt_begin, void* virt_end, void* phys[], struct pgdesc* desc, size_t pidx)
+				__pt_map_frames   (struct pte   pt  [], void* virt_begin, void* virt_end, void* phys[], struct pgdesc* desc, size_t pidx)
 
-				* Information about the current entry will be available in 'result'.
+				__pml4_unmap_frames (struct pml4e pml4[], void* virt_begin, void* virt_end, void* phys[])
+				__pdpt_unmap_frames (struct pdpte pdpt[], void* virt_begin, void* virt_end, void* phys[], size_t pidx)
+				__pd_unmap_frames   (struct pde   pd  [], void* virt_begin, void* virt_end, void* phys[], size_t pidx)
+				__pt_unmap_frames   (struct pte   pt  [], void* virt_begin, void* virt_end, void* phys[], size_t pidx)
 
-				Setting 'result' to NULL is undefined behaviour.
+				// Contiguous
+				__pml4_map_frame_range (struct pml4e pml4[], void* virt_begin, void* virt_end, void* phys_begin, struct pgdesc* desc)
+				__pdpt_map_frame_range (struct pdpte pdpt[], void* virt_begin, void* virt_end, void* phys_begin, struct pgdesc* desc)
+				__pd_map_frame_range   (struct pde   pd  [], void* virt_begin, void* virt_end, void* phys_begin, struct pgdesc* desc)
+				__pt_map_frame_range   (struct pte   pt  [], void* virt_begin, void* virt_end, void* phys_begin, struct pgdesc* desc)
 
-				// TODO: define struct pagewalk_result, thought atleast phys_addr and the pointer to the
-				         next entry will be there. There must be a pointer to the next entry as the page-
-				         tables are not necessarily contiguous.
-
+//				__reload_cr3(void);
+				struct pagetable_pml4_entry* __read_cr3(void);
+				void __write_cr3(struct pagetable_pml4_entry* root);
 
 		The following functions shall define our physpage api:
 			
-			- void  phys_enumerate(void* base, size_t count);
-				This will push 'count' pages into the physpage stack,
-				with the phys addr starting at base. Region must be
+			- void  __x86_enumerate_frames(size_t count, void* start);
+				This will push 'count' pages into the framstack,
+				with the phys addr starting at `start`. Region must be
 				contiguous.
 
 				This function can fail silently. Exacerbate caution.
 
-				'base' must be aligned to 4KiB. 'count' must be non-zero. The
-				entire region denoted by 'base:count' must point to a valid set
-				of free physical pages.
+				'start' must be aligned to 4KiB. 'count' must be non-zero. The
+				entire region denoted by 'start:count' must point to a valid set
+				of free and unmanaged physical pages.
 
-			- void* phys_pop(void)
-				This will pop a physpage from the physpage stack.
+			- void* pop_frame(void)
+				/**
+				 * void* pop_frame(void); -- Pop a frame from the framestack.
+				 *
+				 * This function pops a physical memory frame from the framestack and returns it.
+				 * It is the lowest operation used to allocate physical memory.
+				 *
+				 * On failure; an empty stack, this function returns NULL, and indicates the system
+				 * is out of physical memory.
+				 * Example:
+				 * {
+				 *     // The result address is physical and is not mapped into the virtual addressing space.
+				 *     // You must map it to use it.
+				 *     void* phys_addr = pop_frame();
+				 *     if (phys_addr == NULL)
+				 *         // handle oom //;
+				 * }
+				 */
 
-				This function will return the physical address of a free phys-
-				ical page, or return NULL to indicate we're out of memory.
-
-			- void phys_push(void* physaddr)
-				This will push a physpage to the physpage stack.
-
-				'physaddr' should be a page acquired with phys_pop(), doing other-
-				wise is undefined behaviour.
-
-				This function can panic() the system if too much memory is pushed.
-
+			- int push_frame(void* phys)
+				/**
+				 * int push_frame(void* phys); -- Push a frame to the framestack.
+				 *
+				 * This function pushes the physical frame `phys` into the framestack.
+				 *
+				 * You must not push more frames into the framestack than there are physical frames in the machine, e.g.
+				 * you must not call more `push_frame()`s than `pop_frame()`s.
+				 *
+				 * Addresses fed into push_frame() must be aligned to PAGE_SIZE.
+				 *
+				 * The function returns zero on success.
+				 *
+				 * Errors:
+				 *  EDOM   - Attempt to push more physical frames to the framestack than available in the machine.
+				 *  EFAULT - Address not aligned to PAGE_SIZE.
+				 *
+				 * Example:
+				 * {
+				 *     // Here is assumed PAGE_SIZE == 0x1000
+				 *     // Here is assumed the kernel the frame: 0xf00f0000.
+				 *     void* phys_addr = 0xf00f0000;
+				 *
+				 *     // Let's give it back
+				 *     // 0xf00f0000 is pushed into the framestack.
+				 *     int err = push_frames(phys_addr);
+				 *     // taht page is no longer available and might be returned somewhere else in a future
+				 *     // call to pop_frame().
+				 * }
+				 */
 
 		The following functions shall define our vmalloc api:
 
@@ -217,7 +309,8 @@
 				· EINVAL → Count is 0.
 
 				Note that vmalloc area pointers are negative, such one can test
-				for errors by casting as signed and checking if 'x => 0'.
+				for errors by ~~casting as signed and checking if 'x => 0'~~
+				using the PTR_ERR() and PTR_AS_ERR() macros.
 
 			- void vfree(void* vaddr, size_t count);
 
@@ -230,3 +323,30 @@
 
 				This function panic()s the system if 'vaddr:count' points to
 				alteast one page that was not allocated with vmalloc().
+
+Sample kernel mapping
+
+0:      RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA6A
+0:      RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA6B
+253:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA6C
+91:     RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA5B
+92:     RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA5C
+93:     RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA5D
+94:     RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA5E
+95:     RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA5F
+96:     RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA60
+97:     RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA61
+98:     RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA62
+99:     RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA63
+100:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA64
+101:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA65
+102:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA66
+103:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA67
+104:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA68
+105:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA69
+106:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA6A
+107:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA6B
+108:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA6C
+109:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA6D
+110:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA6E
+111:    RW: 1   UK: 1   AC: 0   PHY: 0x000000000001FA6F
