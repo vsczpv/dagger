@@ -27,4 +27,8 @@
 
 noreturn void ___panic(const char* restrict msg, const char* restrict file, int line);
 
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+#define ASSERT(expr) if ( ! (expr) ) { panic("assertion failed " TOSTRING(expr)); }
+
 #endif // KERNEL_PANIC_H
