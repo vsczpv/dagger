@@ -21,6 +21,7 @@
 #include <phys.h>
 #include <early_alloc.h>
 #include <panic.h>
+#include <errno.h>
 
 struct physmap_descriptor_table physmap_descriptor =
 {
@@ -99,4 +100,32 @@ struct physmap* pm_find_physmap_highest_usable(void)
 		return NULL;
 	else
 		return map;
+}
+
+
+size_t pm_pfstack_current_pos = 0;
+
+int pm_push_frame(intptr_t phys)
+{
+
+	if ((phys & 0xfff) != 0)
+		return EFAULT;
+
+	if (((pm_pfstack_current_pos + 1) * 4*KiB) >= available_physical_memory)
+		return EDOM;
+
+	PHYSFRAME_STACK_GETPTR()[pm_pfstack_current_pos++] = phys;
+	used_physical_memory -= 4*KiB;
+
+	return 0;
+}
+
+intptr_t pm_pop_frame(void)
+{
+	if (used_physical_memory == available_physical_memory)
+		return (intptr_t) NULL;
+
+	used_physical_memory += 4*KiB;
+
+	return PHYSFRAME_STACK_GETPTR()[--pm_pfstack_current_pos];
 }

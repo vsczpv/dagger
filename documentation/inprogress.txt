@@ -288,7 +288,7 @@
 				 *     // Let's give it back
 				 *     // 0xf00f0000 is pushed into the framestack.
 				 *     int err = push_frames(phys_addr);
-				 *     // taht page is no longer available and might be returned somewhere else in a future
+				 *     // that page is no longer available and might be returned somewhere else in a future
 				 *     // call to pop_frame().
 				 * }
 				 */

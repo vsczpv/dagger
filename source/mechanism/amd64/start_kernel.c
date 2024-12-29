@@ -166,6 +166,59 @@ __attribute__ ((naked)) noreturn void start_kernel(void)
 	);
 }
 
+static void populate_pfstack(void)
+{
+
+	/* pm_push_frame() decrements this, so me must set it beforehand. */
+	used_physical_memory = available_physical_memory;
+	ssize_t left         = available_physical_memory;
+
+	for (size_t i = 0; i < physmap_descriptor.map_count; i++)
+	{
+		struct physmap* map = &physmap_descriptor.maps[i];
+		if ((map->type == pm_Usable || map->type == pm_Bootloader_Reclaimable) && (!map->reaped))
+		{
+
+			intptr_t base   = (intptr_t) map->base;
+			ssize_t  length = map->length;
+
+			ASSERT(left > 0);
+			left -= length;
+
+			ASSERT_PAGEALIGNED(base);
+			ASSERT_PAGEALIGNED(base + length);
+
+			for (intptr_t j = base; j < base + length; j += 4*KiB)
+				pm_push_frame(j);
+
+			map->reaped = true;
+		}
+	}
+	ASSERT(left == 0);
+
+	return;
+}
+
+static void assert_physmgr_n_paging(void)
+{
+	for (int i = 0; i < 990; i++)
+		kprintfln("A %X", pm_pop_frame());
+
+	intptr_t  paddr = pm_pop_frame();
+	long int* vaddr = (long int*) (paddr + 0xffff'9000'0000'0000);
+
+	kprintf("physmgr & paging ASSERTION: paddr = %X\n"
+	        "                            vaddr = %X\n", paddr, vaddr);
+
+	*vaddr = 0x1337cafedeadbeef;
+
+	kprintf("                            value = %X\n"
+			"                            should be 0x1337cafedeadbeef\n", *vaddr);
+
+	ASSERT(pm_push_frame(paddr) == 0);
+	ASSERT(*vaddr == 0x1337cafedeadbeef);
+}
+
 /*
  * start_kernel2
  *
@@ -191,6 +244,12 @@ noreturn void start_kernel2(void)
 
 	/* Switch from limine's pagetables to ours */
 	pagetable_bootstrap_tables();
+
+	/* Get ourselves some memory */
+	populate_pfstack();
+
+	/* Do some health checks */
+	assert_physmgr_n_paging();
 
 	/* Call into the platform agnostic portion of the kernel */
 	kernel_main();

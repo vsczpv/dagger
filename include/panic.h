@@ -30,5 +30,6 @@ noreturn void ___panic(const char* restrict msg, const char* restrict file, int 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 #define ASSERT(expr) if ( ! (expr) ) { panic("assertion failed " TOSTRING(expr)); }
+#define ASSERT_PAGEALIGNED(addr) if ((((intptr_t) addr) & 0b111) != 0) { panic("misaligned address assertion"); }
 
 #endif // KERNEL_PANIC_H

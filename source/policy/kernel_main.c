@@ -47,7 +47,7 @@ noreturn void kernel_main(void)
 
 	kprintfln("kernel made through early boot with %i bytes to spare.", early_alloc_get_remaining());
 
-//	* (volatile int*) NULL = 0xdeadbeef;
+
 
 	return_not;
 }

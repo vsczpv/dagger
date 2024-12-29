@@ -144,7 +144,7 @@ static void pagetable_bootstrap_physmgr(void)
 
 	/* TODO: check math */
 	size_t used_pages   = 0;
-	size_t needed_pages = (available_physical_memory / (4*KiB) * 8) / (4*KiB);
+	size_t needed_pages = (available_physical_memory / (4*KiB) * 8) / (4*KiB) + 1;
 
 	struct physmap* map = pm_find_physmap_with_atleast(needed_pages*4*KiB);
 
@@ -268,14 +268,15 @@ static void pagetable_bootstrap_lower_hhdm(void)
 	 * so let's limit the kernel to one GiB.
 	 */
 
-	ASSERT((intptr_t) map->base < 1*GiB);
+	intptr_t sz = (intptr_t) map->base + map->length;
 
-	intptr_t sz = (intptr_t) map->base;
-	         sz = MIN(sz, 1*GiB-1);
+	ASSERT((intptr_t) sz < 1*GiB);
+
+	sz = MIN(sz, 1*GiB-1);
 
 	kprintfln("physmgr: mapping %i bytes worth of physical bus.", sz);
 
-	size_t needed_pages = sz / (2*MiB) + 1;
+	size_t needed_pages = (sz / (2*MiB)) + 1;
 
 	void* lower_hhdm = HHDM_GETPTR();
 
@@ -317,7 +318,7 @@ static void pagetable_bootstrap_lower_hhdm(void)
 		pdle->reserved        = 0;
 		pdle->present         = 1;
 
-		phys += 0x1000000;
+		phys += 2*MiB;
 	}
 
 	pdpte->reserved        = 0;
