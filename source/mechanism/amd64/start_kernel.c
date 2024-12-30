@@ -25,6 +25,7 @@
 #include <arch/amd64/idt.h>
 #include <arch/amd64/com0.h>
 #include <arch/amd64/pagetables.h>
+#include <arch/amd64/pagetables.h>
 
 #include <vt_escape_sequences.h>
 #include <early_alloc.h>
@@ -32,6 +33,8 @@
 #include <panic.h>
 #include <stddef.h>
 #include <ktext.h>
+#include <phys.h>
+#include <paging.h>
 
 #include <kernel.h>
 
@@ -152,20 +155,6 @@ static void limine_get_kernel_address(void)
 	return;
 }
 
-volatile uint8_t __attribute__ ((aligned(4*KiB))) kernel_stack[32*KiB];
-
-__attribute__ ((naked)) noreturn void start_kernel(void)
-{
-	__asm__ volatile
-	(
-		"movq	%0, %%rsp\n"
-		"call	start_kernel2\n"
-		:
-		: "a" (kernel_stack)
-		:
-	);
-}
-
 static void populate_pfstack(void)
 {
 
@@ -201,8 +190,6 @@ static void populate_pfstack(void)
 
 static void assert_physmgr_n_paging(void)
 {
-	for (int i = 0; i < 990; i++)
-		kprintfln("A %X", pm_pop_frame());
 
 	intptr_t  paddr = pm_pop_frame();
 	long int* vaddr = (long int*) (paddr + 0xffff'9000'0000'0000);
@@ -217,6 +204,45 @@ static void assert_physmgr_n_paging(void)
 
 	ASSERT(pm_push_frame(paddr) == 0);
 	ASSERT(*vaddr == 0x1337cafedeadbeef);
+
+	volatile int*     somewhere = (int*) 0xdeadc000;
+	int amnt = 4;
+	intptr_t phys[amnt];
+	for (int i = 0; i < amnt; i++) phys[i] = pm_pop_frame();
+
+	struct pgdesc pgdesc =
+	{
+		.cmode  = PGDESC_PAT_WB,
+		.global = PGDESC_CONTEXTUAL,
+		.rw     = PGDESC_READWRITE,
+		.uk     = PGDESC_KERNEL,
+		.xd     = PGDESC_EX_DISABLE
+	};
+
+	int err = pg_map_frames(amnt, (void*)somewhere, phys, &pgdesc);
+
+	if (err != 0)
+	{
+		kprintfln("ERROR %i\n", err);
+		panic("pg_map_frames() failed");
+	}
+
+	*somewhere = 0x1234;
+	kprintfln("A %x", *somewhere);
+}
+
+volatile uint8_t __attribute__ ((aligned(4*KiB))) kernel_stack[32*KiB];
+
+__attribute__ ((naked)) noreturn void start_kernel(void)
+{
+	__asm__ volatile
+	(
+		"movq	%0, %%rsp\n"
+		"call	start_kernel2\n"
+		:
+		: "a" (kernel_stack + 32*KiB - 16)
+		:
+	);
 }
 
 /*
@@ -232,7 +258,7 @@ noreturn void start_kernel2(void)
 	com0_initialize_port();
 
 	kprintln(VT_BOLD "Dagger 1.0 - Kernel Startup" VT_END);
-	kprintfln("kernel stack at %X", &kernel_stack);
+	kprintfln("kernel stack at %X", (intptr_t) &kernel_stack + 32*KiB);
 
 	/* Use Limine to get system info */
 	limine_scan_boot_memmaps();

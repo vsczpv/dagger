@@ -61,7 +61,7 @@ struct __attribute__ ((packed)) pagetable_pd_entry
 	uint64_t execute_disable : 1;
 };
 
-#define PGDESC_PHYSADDR_LARGE_MASK  0b1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'0000'0000'0000'0000'0000'0000
+#define PGDESC_PHYSADDR_LARGE_MASK  0b1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1110'0000'0000'0000'0000'0000
 #define PGDESC_PHYSADDR_LARGE_SHIFT 13
 
 /* 2 MiB Variant */
@@ -158,51 +158,13 @@ void pagetable_bootstrap_tables(void);
 #define PAGETABLES_IDX_PT_SHIFT   12
 #define PAGETABLES_GET_PT_IDX(addr) (((intptr_t) (addr) & PAGETABLES_IDX_PT_MASK) >> PAGETABLES_IDX_PT_SHIFT)
 
-
-#define PGDESC_WRITEBACK    0
-#define PGDESC_WRITETHROUGH 1
-#define PGDESC_CACHED       0
-#define PGDESC_UNCACHED     1
-
-#define PGDESC_PAGE_NORMAL  0
-#define PGDESC_PAGE_BIG     1
-
-#define PGDESC_PAT_WB       0
-#define PGDESC_PAT_WT       1
-#define PGDESC_PAT_UC_MINUS 2
-#define PGDESC_PAT_UC       3
-#define PGDESC_PAT_WP       4
-#define PGDESC_PAT_WC       5
-
 #define PGDESC_PAT_PAT(mode) ((mode & 0b100) >> 2)
 #define PGDESC_PAT_PCD(mode) ((mode & 0b010) >> 1)
 #define PGDESC_PAT_PWT(mode) ((mode & 0b001))
 
-#define PGDESC_RDONLY       0
-#define PGDESC_READWRITE    1
-
-#define PGDESC_USER         0
-#define PGDESC_KERNEL       1
-
-#define PGDESC_CONTEXTUAL   0
-#define PGDESC_GLOBAL       1
-
-#define PGDESC_EX_ENABLE    0
-#define PGDESC_EX_DISABLE   1
-
-struct pgdesc {
-	intptr_t phys;
-	uint8_t  pat;
-//	uint8_t  pk;
-	bool     rw;
-	bool     uk;
-	bool     global;
-	bool     xd;
-};
-
 void pagetable_reload_pages(volatile struct pagetable_pml4_entry root[PAGETABLE_ENTRIES_PER_TABLE]);
 
-void __pml4_map_frames(struct pagetable_pml4_entry pml4[PAGETABLE_ENTRIES_PER_TABLE], void* virt_begin, size_t length, intptr_t phys[], struct pgdesc* desc);
+//void __pml4_map_frames(struct pagetable_pml4_entry pml4[PAGETABLE_ENTRIES_PER_TABLE], void* virt_begin, size_t length, intptr_t phys[], struct pgdesc* desc);
 
 /*
 __pml4_map_frames (struct pml4e pml4[], void* virt_begin, void* virt_end, void* phys[], struct pgdesc* desc)

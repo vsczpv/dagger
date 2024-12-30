@@ -28,6 +28,7 @@
 #include <phys.h>
 #include <minmax.h>
 #include <memory.h>
+#include <paging.h>
 
 volatile struct pagetable_pml4_entry pagetables_root                  [PAGETABLE_ENTRIES_PER_TABLE] __attribute__ ((aligned(4096))) = { 0 };
 volatile struct pagetable_pdpt_entry pagetables_kernelmap_pdpt_entries[PAGETABLE_ENTRIES_PER_TABLE] __attribute__ ((aligned(4096))) = { 0 };

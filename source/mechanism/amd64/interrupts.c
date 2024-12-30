@@ -19,6 +19,7 @@
  */
 
 #include <arch/amd64/interrupts.h>
+#include <arch/amd64/cr.h>
 #include <return_not.h>
 
 interrupt_entry void isr_dummy_interrupt_entry(struct isr_interrupt_frame* frame)
@@ -89,8 +90,9 @@ interrupt_body noreturn void isr_page_fault_body (struct isr_interrupt_frame* fr
 		"FLAGS:\t%X\n"
 		"SP:\t%X\n"
 		"SS:\t%X\n"
-		"CODE:\t%X\n",
-		frame->ip, frame->cs, frame->flags, frame->sp, frame->ss, arg
+		"CODE:\t%X\n"
+		"CR2:\t%X\n",
+		frame->ip, frame->cs, frame->flags, frame->sp, frame->ss, arg, __read_cr2()
 	);
 
 	panic("unhandled page fault in kernel.");

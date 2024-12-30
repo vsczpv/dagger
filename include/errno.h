@@ -18,17 +18,13 @@
  *
  */
 
-#ifndef KERNEL_ARCH_AMD64_CR_H_
-#define KERNEL_ARCH_AMD64_CR_H_
+#ifndef KERNEL_ERRNO_H_
+#define KERNEL_ERRNO_H_
 
-#include <arch/amd64/pagetables.h>
+/* Mimics Linux; no reason to do otherwise. */
+#define ENOMEM 12
+#define EFAULT 14
+#define EINVAL 22
+#define EDOM   33
 
-intptr_t __read_cr2  (void);
-
-intptr_t __read_cr3  (void);
-void     __write_cr3 (intptr_t);
-
-#endif // KERNEL_ARCH_AMD64_CR_H_
-
-
-
+#endif // KERNEL_ERRNO_H_

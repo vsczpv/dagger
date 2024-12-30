@@ -20,6 +20,22 @@
 
 #include <arch/amd64/cr.h>
 
+
+intptr_t __read_cr2  (void)
+{
+
+	intptr_t pg_root;
+
+	__asm__ volatile (
+		"movq %%cr2, %0\n"
+		: "=r" (pg_root)
+		:
+		:
+	);
+
+	return (intptr_t) pg_root;
+}
+
 intptr_t __read_cr3  (void)
 {
 

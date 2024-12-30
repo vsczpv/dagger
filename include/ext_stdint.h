@@ -22,6 +22,7 @@
 #define KERNEL_ARCH_AMD64_STDINT_H_
 
 #include <stdint.h>
+#include <stddef.h>
 
 typedef signed long int ssize_t;
 
