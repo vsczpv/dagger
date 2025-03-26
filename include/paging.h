@@ -50,6 +50,9 @@
 #define PGDESC_EX_ENABLE    0
 #define PGDESC_EX_DISABLE   1
 
+#define PGDESC_NOT_PRESENT  0
+#define PGDESC_PRESENT      1
+
 struct pgdesc {
 	intptr_t phys;
 	uint8_t  cmode;
@@ -59,35 +62,39 @@ struct pgdesc {
 	bool     uk;
 	bool     global;
 	bool     xd;
+	bool     present;
 };
 
 int pg_unmap_frames(size_t count, void* virt, intptr_t phys[]);
 /**
-* int punmap_frames (size_t count, void* virt, void** phys); -- Unmap `count` virtual address pages and store respective physical pages on `phys`.
+* int pg_unmap_frames (size_t count, void* virt, void** phys); -- Unmap `count` virtual address pages and store respective physical pages on `phys`.
 *
-* This function is used to disassociate physical memory from virtual memory. It unmaps any
-* virtual memory starting at `virt` up to `virt + PAGE_SIZE * count` and stores the physical address
-* once-pointed-by in the array pointed by `phys`.
+* Is effectively a wrapper to
+*
+*     return pg_map_frames(count, virt, phys, { .present = PGDESC_NOT_PRESENT } )
 *
 * If `phys` is NULL the physical addresses are not stored.
 *
 * Errors:
-*  EINVAL - `virt` is NULL; `count` is zero.
-*  EFAULT - `virt` is not aligned to PAGE_SIZE.
+*  Same as pg_map_frames
 *
 */
 
 int pg_map_frames(size_t count, void* virt, intptr_t phys[], struct pgdesc* pgdesc);
 /**
-* int pmap_frames(size_t count, void* virt, void* phys[]); -- Map `count` virtual address pages into `count` physical frames.
+* int pg_map_frames(size_t count, void* virt, void* phys[]); -- Map `count` virtual address pages into `count` physical frames.
 *
 * This function is used to map a series of non-contiguous physical frames into a equally sized and
 * contiguous virtual address range. It applies to the page tables immediatly.
 *
+* Note that if pgdesc->present == PGDESC_NOT_PRESENT, pg_map_frames will unmap the pages instead.
+* The frames that back `virt` will be placed on `phys[.count]`. If `phys` is NULL the addresses are discarded.
+*
 * Errors:
-*  EINVAL - Either `virt` or `phys` are NULL, and element of `phys` is NULL or `count` is zero.
+*  EINVAL - Either `virt` or `phys` are NULL or `count` is zero.
 *  EFAULT - Either `virt` or and/some element(s) of `phys` ain't aligned to PAGE_SIZE.
 *  ENOMEM - System has not enough memory to perform the mapping operation.
+*  EDOM   - `virt` is not a canonical address.
 *
 * Example:
 * {
@@ -97,8 +104,8 @@ int pg_map_frames(size_t count, void* virt, intptr_t phys[], struct pgdesc* pgde
 *     phys[1] = pop_frame();
 *     phys[2] = pop_frame();
 *     phys[3] = pop_frame();
-*     int err = pmap_frames(4, 0xcafe0000, phys);
-*     // Assuming pmap_frames() succeded, `0xdeadcafe` is now a valid address
+*     int err = pg_map_frames(4, 0xcafe0000, phys);
+*     // Assuming pg_map_frames() succeded, `0xcafe3fff` is now a valid address
 *     // pointing to four contiguous pages of virtual memory, backed by four frames of physical memory.
 *     ((int*) phys[0]) = 1234;
 * }

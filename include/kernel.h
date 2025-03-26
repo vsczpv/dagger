@@ -65,7 +65,8 @@ extern size_t used_physical_memory;
 #define HHDM_VIRT_TO_PHYS(addr) ((intptr_t) (addr) - HHDM_LOCATION)
 #define HHDM_PHYS_TO_VIRT(addr) ((void*)   ((addr) + HHDM_LOCATION))
 
-#define CANONICAL(addr) (((intptr_t) addr & 0xffff'0000'0000'0000) == 0 || ((intptr_t) addr & 0xffff'0000'0000'0000) == 0xffff'0000'0000'0000)
+#define CANONICAL(addr) ((((intptr_t) addr) & 0xffff'0000'0000'0000) == 0 || ((intptr_t) addr & 0xffff'0000'0000'0000) == 0xffff'0000'0000'0000)
+#define ALIGNED(addr)  ((((intptr_t) addr) & 0b111) == 0)
 
 noreturn void kernel_main(void);
 

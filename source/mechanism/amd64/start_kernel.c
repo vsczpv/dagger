@@ -188,8 +188,12 @@ static void populate_pfstack(void)
 	return;
 }
 
+// #define ASSERT_PHYSMGR_N_PAGING_DEBUG
+
 static void assert_physmgr_n_paging(void)
 {
+
+#ifdef ASSERT_PHYSMGR_N_PAGING_DEBUG
 
 	intptr_t  paddr = pm_pop_frame();
 	long int* vaddr = (long int*) (paddr + 0xffff'9000'0000'0000);
@@ -210,13 +214,17 @@ static void assert_physmgr_n_paging(void)
 	intptr_t phys[amnt];
 	for (int i = 0; i < amnt; i++) phys[i] = pm_pop_frame();
 
+	for (int i = 0; i < amnt; i++)
+		kprintf("%X ", phys[i]);
+
 	struct pgdesc pgdesc =
 	{
-		.cmode  = PGDESC_PAT_WB,
-		.global = PGDESC_CONTEXTUAL,
-		.rw     = PGDESC_READWRITE,
-		.uk     = PGDESC_KERNEL,
-		.xd     = PGDESC_EX_DISABLE
+		.cmode   = PGDESC_PAT_WB,
+		.global  = PGDESC_CONTEXTUAL,
+		.rw      = PGDESC_READWRITE,
+		.uk      = PGDESC_KERNEL,
+		.xd      = PGDESC_EX_DISABLE,
+		.present = PGDESC_PRESENT
 	};
 
 	int err = pg_map_frames(amnt, (void*)somewhere, phys, &pgdesc);
@@ -229,6 +237,33 @@ static void assert_physmgr_n_paging(void)
 
 	*somewhere = 0x1234;
 	kprintfln("A %x", *somewhere);
+
+	kprintfln("mem %i", used_physical_memory);
+
+	intptr_t phys2[amnt];
+
+	err = pg_unmap_frames(amnt, (void*) somewhere, phys2);
+
+	if (err)
+	{
+		kprintfln("ERROR %i\n", err);
+		panic("pg_map_frames() failed");
+	}
+
+	for (int i = 0; i < amnt; i++)
+	{
+		kprintf("%X ", phys2[i]);
+		int err = pm_push_frame(phys2[i]);
+		if (err)
+		{
+			kprintfln("ERROR %i\n", err);
+			panic("pg_push_frame() failed");
+		}
+	}
+
+	kprintfln("mem %i", used_physical_memory);
+
+#endif
 }
 
 volatile uint8_t __attribute__ ((aligned(4*KiB))) kernel_stack[32*KiB];

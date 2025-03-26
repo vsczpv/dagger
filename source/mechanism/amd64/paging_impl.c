@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Vinícius Schütz Piva
+ * Copyright © 2024, 2025 Vinícius Schütz Piva
  *
  * This file is part of dagger
  *
@@ -31,56 +31,47 @@
 static size_t __pg_map_frames_pt(volatile struct pagetable_pt_entry* pt_root, size_t count, void* virt, intptr_t phys[], struct pgdesc* pgdesc, size_t total)
 {
 
-	kprintln("D");
-
 	size_t mapped = 0;
 	size_t idx_pt = PAGETABLES_GET_PT_IDX(virt);
 
 	while (idx_pt < PAGETABLE_ENTRIES_PER_TABLE && count != 0)
 	{
-
-		kprintfln("E %i", idx_pt);
-
 		volatile struct pagetable_pt_entry* pte = &pt_root[idx_pt];
-
-		kprintfln("F %X", pte);
-
-		ASSERT(pte->present == 0);
-
-		kprintfln("G %x %x %x", total, count, count/4/KiB);
 
 		size_t   physidx = total - count/4/KiB;
 
-		kprintfln("H %X, %X", physidx, phys + 1);
+		if (pgdesc->present == PGDESC_PRESENT)
+		{
+			intptr_t frame   = phys[physidx];
 
-		intptr_t frame   = phys[physidx];
+			pte->phys_address    = frame >> 12;
+			pte->user_kern       = pgdesc->uk;
+			pte->read_write      = pgdesc->rw;
+			pte->execute_disable = pgdesc->xd;
+			pte->cache_disable   = PGDESC_PAT_PCD(pgdesc->cmode);
+			pte->wt_wb           = PGDESC_PAT_PWT(pgdesc->cmode);
+			pte->pat             = PGDESC_PAT_PAT(pgdesc->cmode);
+			pte->global          = pgdesc->global;
+			pte->accessed        = 0;
+		}
 
-		kprintfln("I %X\t:\t:%X", frame, pte);
+		else
+		{
+			if (phys) phys[physidx] = pte->phys_address << 12;
+		}
 
-		pte->phys_address    = frame >> 12;
-		pte->user_kern       = pgdesc->uk;
-		pte->read_write      = pgdesc->rw;
-		pte->execute_disable = pgdesc->xd;
-		pte->cache_disable   = PGDESC_PAT_PCD(pgdesc->cmode);
-		pte->wt_wb           = PGDESC_PAT_PWT(pgdesc->cmode);
-		pte->pat             = PGDESC_PAT_PAT(pgdesc->cmode);
-		pte->global          = pgdesc->global;
-		pte->accessed        = 0;
-		pte->present         = 1;
+		pte->present         = pgdesc->present;
 
 		mapped += 4*KiB;
 		count  -= 4*KiB;
 		idx_pt++;
 	}
 
-	kprintln("Z");
 	return mapped;
 }
 
 static size_t __pg_map_frames_pd(volatile struct pagetable_pd_entry* pd_root, size_t count, void* virt, intptr_t phys[], struct pgdesc* pgdesc, size_t total)
 {
-
-	kprintln("C");
 
 	size_t mapped_tot = 0;
 	size_t idx_pd     = PAGETABLES_GET_PD_IDX(virt);
@@ -90,7 +81,7 @@ static size_t __pg_map_frames_pd(volatile struct pagetable_pd_entry* pd_root, si
 		volatile struct pagetable_pd_entry* pde = &pd_root[idx_pd];
 		volatile struct pagetable_pt_entry* pt_root;
 
-		if (pde->present == 0)
+		if (pde->present == 0 && pgdesc->present == PGDESC_PRESENT)
 		{
 			intptr_t tableaddr = pm_pop_frame();
 			ASSERT  (tableaddr != (intptr_t) NULL);
@@ -117,6 +108,24 @@ static size_t __pg_map_frames_pd(volatile struct pagetable_pd_entry* pd_root, si
 		}
 
 		size_t mapped = __pg_map_frames_pt(pt_root, count, virt, phys, pgdesc, total);
+
+		/* Check if subpages were zeroed during unmapping */
+		if (pgdesc->present == PGDESC_NOT_PRESENT)
+		{
+			bool present = false;
+
+			for (size_t i = 0; i < PAGETABLE_ENTRIES_PER_TABLE; i++)
+			{
+				volatile struct pagetable_pt_entry* pte = &pt_root[i];
+				present |= pte->present;
+			}
+
+			if (!present)
+				ASSERT(pm_push_frame(HHDM_VIRT_TO_PHYS(pt_root)) == 0);
+
+			pde->present = 0;
+		}
+
 		count        -= mapped;
 		virt          = (void*) ((intptr_t) virt + mapped);
 
@@ -130,8 +139,6 @@ static size_t __pg_map_frames_pd(volatile struct pagetable_pd_entry* pd_root, si
 static size_t __pg_map_frames_pdpt(volatile struct pagetable_pdpt_entry* dt_root, size_t count, void* virt, intptr_t phys[], struct pgdesc* pgdesc, size_t total)
 {
 
-	kprintln("B");
-
 	size_t mapped_tot = 0;
 	size_t idx_dt     = PAGETABLES_GET_PDPT_IDX(virt);
 
@@ -141,7 +148,7 @@ static size_t __pg_map_frames_pdpt(volatile struct pagetable_pdpt_entry* dt_root
 		volatile struct pagetable_pdpt_entry* dte = &dt_root[idx_dt];
 		volatile struct pagetable_pd_entry*   pd_root;
 
-		if (dte->present == 0)
+		if (dte->present == 0 && pgdesc->present == PGDESC_PRESENT)
 		{
 			intptr_t tableaddr = pm_pop_frame();
 			ASSERT  (tableaddr != (intptr_t) NULL);
@@ -168,6 +175,24 @@ static size_t __pg_map_frames_pdpt(volatile struct pagetable_pdpt_entry* dt_root
 		}
 
 		size_t mapped = __pg_map_frames_pd(pd_root, count, virt, phys, pgdesc, total);
+
+		/* Check if subpages were zeroed during unmapping */
+		if (pgdesc->present == PGDESC_NOT_PRESENT)
+		{
+			bool present = false;
+
+			for (size_t i = 0; i < PAGETABLE_ENTRIES_PER_TABLE; i++)
+			{
+				volatile struct pagetable_pd_entry* pde = &pd_root[i];
+				present |= pde->present;
+			}
+
+			if (!present)
+				ASSERT(pm_push_frame(HHDM_VIRT_TO_PHYS(pd_root)) == 0);
+
+			dte->present = 0;
+		}
+
 		count        -= mapped;
 		virt          = (void*) ((intptr_t) virt + mapped);
 
@@ -180,8 +205,6 @@ static size_t __pg_map_frames_pdpt(volatile struct pagetable_pdpt_entry* dt_root
 
 int pg_map_frames(size_t count, void* virt, intptr_t phys[], struct pgdesc* pgdesc)
 {
-
-	kprintln("A");
 
 	count *= 4*KiB;
 
@@ -202,9 +225,12 @@ int pg_map_frames(size_t count, void* virt, intptr_t phys[], struct pgdesc* pgde
 		return EDOM;
 		/* Address range overflows. */
 
-	if (!CANONICAL(virt) || count == 0 || phys == NULL)
+	if (!CANONICAL(virt) || count == 0 || (phys == NULL && pgdesc->present == PGDESC_PRESENT))
 		return EINVAL;
 		/* Address range not canonical; inval arg. */
+
+	if (!ALIGNED(virt))
+		return EFAULT;
 
 	size_t idx_ro = PAGETABLES_GET_PML4_IDX(virt);
 	size_t total  = count/4/KiB;
@@ -215,8 +241,10 @@ int pg_map_frames(size_t count, void* virt, intptr_t phys[], struct pgdesc* pgde
 		volatile struct pagetable_pml4_entry* roe = &pagetables_root[idx_ro];
 		volatile struct pagetable_pdpt_entry* dt_root;
 
-		if (roe->present == 0)
+		/* We don't need to do anything during unmapping here if pgdesc->present == PGDESC_NOT_PRESENT */
+		if (roe->present == 0 && pgdesc->present == PGDESC_PRESENT)
 		{
+
 			intptr_t tableaddr = pm_pop_frame();
 			ASSERT  (tableaddr != (intptr_t) NULL);
 
@@ -242,6 +270,24 @@ int pg_map_frames(size_t count, void* virt, intptr_t phys[], struct pgdesc* pgde
 		}
 
 		size_t mapped = __pg_map_frames_pdpt(dt_root, count, virt, phys, pgdesc, total);
+
+		/* Check if subpages were zeroed during unmapping */
+		if (pgdesc->present == PGDESC_NOT_PRESENT)
+		{
+			bool present = false;
+
+			for (size_t i = 0; i < PAGETABLE_ENTRIES_PER_TABLE; i++)
+			{
+				volatile struct pagetable_pdpt_entry* dte = &dt_root[i];
+				present |= dte->present;
+			}
+
+			if (!present)
+				ASSERT(pm_push_frame(HHDM_VIRT_TO_PHYS(dt_root)) == 0);
+
+			roe->present = 0;
+		}
+
 		count        -= mapped;
 		virt          = (void*) ((intptr_t) virt + mapped);
 
@@ -251,4 +297,15 @@ int pg_map_frames(size_t count, void* virt, intptr_t phys[], struct pgdesc* pgde
 	pagetable_reload_pages(pagetables_root);
 
 	return 0;
+}
+
+int pg_unmap_frames(size_t count, void* virt, intptr_t phys[])
+{
+
+	struct pgdesc pgdesc = {
+		.present = PGDESC_NOT_PRESENT
+	};
+
+	return pg_map_frames(count, virt, phys, &pgdesc);
+
 }
