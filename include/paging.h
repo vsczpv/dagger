@@ -21,6 +21,7 @@
 #ifndef KERNEL_PAGING_H_
 #define KERNEL_PAGING_H_
 
+#include <stdbool.h>
 #include <ext_stdint.h>
 
 #define PGDESC_WRITEBACK    0
