@@ -25,9 +25,9 @@
 
 #define SLAB_MAGIC       0x21AB21AB21AB21AB
 #define SLAB_MIN_STRIDE  8
-#define SLAB_MAX_STRIDE  256
+#define SLAB_MAX_STRIDE  512
 
-#define SLAB_COUNT       6
+#define SLAB_COUNT       7
 
 struct slab_cache;
 
