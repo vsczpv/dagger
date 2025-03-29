@@ -107,6 +107,8 @@ static size_t __pg_map_frames_pd(volatile struct pagetable_pd_entry* pd_root, si
 			pt_root            = (volatile struct pagetable_pt_entry*) vaddr;
 		}
 
+		ASSERT(pde->present != 0);
+
 		size_t mapped = __pg_map_frames_pt(pt_root, count, virt, phys, pgdesc, total);
 
 		/* Check if subpages were zeroed during unmapping */
@@ -121,9 +123,11 @@ static size_t __pg_map_frames_pd(volatile struct pagetable_pd_entry* pd_root, si
 			}
 
 			if (!present)
+			{
 				ASSERT(pm_push_frame(HHDM_VIRT_TO_PHYS(pt_root)) == 0);
+				pde->present = 0;
+			}
 
-			pde->present = 0;
 		}
 
 		count        -= mapped;
@@ -174,6 +178,8 @@ static size_t __pg_map_frames_pdpt(volatile struct pagetable_pdpt_entry* dt_root
 			pd_root            = (volatile struct pagetable_pd_entry*) vaddr;
 		}
 
+		ASSERT(dte->present != 0);
+
 		size_t mapped = __pg_map_frames_pd(pd_root, count, virt, phys, pgdesc, total);
 
 		/* Check if subpages were zeroed during unmapping */
@@ -188,9 +194,11 @@ static size_t __pg_map_frames_pdpt(volatile struct pagetable_pdpt_entry* dt_root
 			}
 
 			if (!present)
+			{
 				ASSERT(pm_push_frame(HHDM_VIRT_TO_PHYS(pd_root)) == 0);
+				dte->present = 0;
+			}
 
-			dte->present = 0;
 		}
 
 		count        -= mapped;
@@ -238,6 +246,13 @@ int pg_map_frames(size_t count, void* virt, intptr_t phys[], struct pgdesc* pgde
 	while (idx_ro < PAGETABLE_ENTRIES_PER_TABLE && count != 0)
 	{
 
+		/*
+		 * roe->present == 0 && pgdesc->present == 0	->	Don't do anything
+		 * roe->present == 1 && pgdesc->present == 0    ->  Deallocate children
+		 *                      pgdesc->present == 1	->  normal path
+		 *
+		 */
+
 		volatile struct pagetable_pml4_entry* roe = &pagetables_root[idx_ro];
 		volatile struct pagetable_pdpt_entry* dt_root;
 
@@ -269,11 +284,14 @@ int pg_map_frames(size_t count, void* virt, intptr_t phys[], struct pgdesc* pgde
 			dt_root            = (volatile struct pagetable_pdpt_entry*) vaddr;
 		}
 
+		ASSERT(roe->present != 0);
+
 		size_t mapped = __pg_map_frames_pdpt(dt_root, count, virt, phys, pgdesc, total);
 
 		/* Check if subpages were zeroed during unmapping */
 		if (pgdesc->present == PGDESC_NOT_PRESENT)
 		{
+
 			bool present = false;
 
 			for (size_t i = 0; i < PAGETABLE_ENTRIES_PER_TABLE; i++)
@@ -283,9 +301,11 @@ int pg_map_frames(size_t count, void* virt, intptr_t phys[], struct pgdesc* pgde
 			}
 
 			if (!present)
+			{
 				ASSERT(pm_push_frame(HHDM_VIRT_TO_PHYS(dt_root)) == 0);
+				roe->present = 0;
+			}
 
-			roe->present = 0;
 		}
 
 		count        -= mapped;

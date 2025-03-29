@@ -25,9 +25,11 @@
 #include <serial.h>
 #include <stddef.h>
 
-#define KiB 1024
-#define MiB 1024*1024
-#define GiB 1024*1024*1024
+#define KiB (1024)
+#define MiB (1024*1024)
+#define GiB (1024*1024*1024)
+
+#define PAGE_SIZE (4*KiB)
 
 #define KERNEL_MAX_SIZE 2*MiB
 
@@ -66,7 +68,7 @@ extern size_t used_physical_memory;
 #define HHDM_PHYS_TO_VIRT(addr) ((void*)   ((addr) + HHDM_LOCATION))
 
 #define CANONICAL(addr) ((((intptr_t) addr) & 0xffff'0000'0000'0000) == 0 || ((intptr_t) addr & 0xffff'0000'0000'0000) == 0xffff'0000'0000'0000)
-#define ALIGNED(addr)  ((((intptr_t) addr) & 0b111) == 0)
+#define ALIGNED(addr)  ((((intptr_t) addr) & 0xfff) == 0)
 
 noreturn void kernel_main(void);
 
