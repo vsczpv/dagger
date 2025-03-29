@@ -25,4 +25,22 @@
 	__asm__ volatile ("" ::: "memory"); \
 	__sync_synchronize();
 
+#include <ext_stdint.h>
+#include <buddy.h>
+#include <slab.h>
+
+#define KLARGE_ALLOC_MAGIC 0xB150B150B150B150
+
+void* kmalloc(size_t bytes);
+void  kfree  (void*  what);
+
+struct klarge_alloc_header
+{
+	uint64_t magic;
+	size_t   pages;
+};
+
+void* klarge_alloc(size_t bytes);
+void  klarge_free (void*  what);
+
 #endif // KERNEL_MEMORY_H_
