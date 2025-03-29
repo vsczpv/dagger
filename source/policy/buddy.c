@@ -32,21 +32,10 @@ struct buddy_region vmalloc_buddy =
 	.buddylen = VMALLOC_AREA_BUDDY_LIST_SIZE_BITS
 };
 
-inline static size_t next_power_of_2(size_t v)
-{
-	v--;
-	v |= v >> 1;
-	v |= v >> 2;
-	v |= v >> 4;
-	v |= v >> 8;
-	v |= v >> 16;
-	v++;
-
-	return v;
-}
-
 ssize_t buddy_alloc(struct buddy_region* buddy, size_t ct)
 {
+
+	ASSERT(ct != 0);
 
 	size_t len = next_power_of_2(ct);
 
@@ -85,7 +74,10 @@ void buddy_free(struct buddy_region* buddy, ssize_t pos, size_t ct)
 
 void* vmalloc(size_t bytes)
 {
-	size_t pages = bytes / 4 / KiB;
+
+	ASSERT(bytes != 0);
+
+	size_t pages = PAGE_COUNT_FOR_BYTES(bytes);
 
 	ssize_t buddyid = buddy_alloc(&vmalloc_buddy, pages);
 

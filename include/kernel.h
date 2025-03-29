@@ -70,6 +70,23 @@ extern size_t used_physical_memory;
 #define CANONICAL(addr) ((((intptr_t) addr) & 0xffff'0000'0000'0000) == 0 || ((intptr_t) addr & 0xffff'0000'0000'0000) == 0xffff'0000'0000'0000)
 #define ALIGNED(addr)  ((((intptr_t) addr) & 0xfff) == 0)
 
+#define BITLOG2(x) (32 - __builtin_clz(x) - 1)
+
+#define PAGE_COUNT_FOR_BYTES(x) ((((x - 1) & (~0xfff)) >> 12) + 1)
+
+inline static size_t next_power_of_2(size_t v)
+{
+	v--;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+	v++;
+
+	return v;
+}
+
 noreturn void kernel_main(void);
 
 #endif // KERNEL_KERNEL_H_
