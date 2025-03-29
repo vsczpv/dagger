@@ -314,10 +314,6 @@ noreturn void start_kernel2(void)
 	/* Do some health checks */
 	assert_physmgr_n_paging();
 
-	/* Initialize the kernel's virtual region buddy allocator */
-	memset(vmalloc_area_buddy_list, 0, sizeof (vmalloc_area_buddy_list));
-	kprintfln("buddy: allocator ready, %i of virtual.", VMALLOC_AREA_SIZE);
-
 	/* Call into the platform agnostic portion of the kernel */
 	kernel_main();
 
