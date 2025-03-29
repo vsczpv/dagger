@@ -25,6 +25,7 @@
 #include <early_alloc.h>
 #include <serial.h>
 #include <buddy.h>
+#include <slab.h>
 
 /* Where the kernel is */
 void* kernel_physical_base = NULL;
@@ -50,6 +51,8 @@ noreturn void kernel_main(void)
 	/* Initialize the kernel's virtual region buddy allocator */
 	memset(vmalloc_area_buddy_list, 0, sizeof (vmalloc_area_buddy_list));
 	kprintfln("buddy: allocator ready, %i of virtual.", VMALLOC_AREA_SIZE);
+
+	slab_subsystem_init();
 
 	kprintfln("kernel made through early boot with %i bytes to spare.", early_alloc_get_remaining());
 
