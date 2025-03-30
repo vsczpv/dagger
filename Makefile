@@ -22,14 +22,20 @@ ARCH = amd64
 CC = cross/dest/bin/x86_64-elf-gcc
 LD = cross/dest/bin/x86_64-elf-ld
 
-OBJS_POLICY =    $(shell find source/policy            -name '*.c' -type f | sed 's/\.c$$/\.o/;s/source\//build\//')
-OBJS_MECHANISM = $(shell find source/mechanism/$(ARCH) -name '*.c' -type f | sed 's/\.c$$/\.o/;s/source\//build\//')
+OBJS_POLICY :=    $(shell find source/policy            -name '*.c' -type f | sed 's/\.c$$/\.o/;s/source\//build\//')
+OBJS_MECHANISM := $(shell find source/mechanism/$(ARCH) -name '*.c' -type f | sed 's/\.c$$/\.o/;s/source\//build\//')
 
-HEADERS = $(shell find include -name '*.h' -type f)
+HEADERS := $(shell find include -name '*.h' -type f)
 
 DEFINES = -DARCH_$(ARCH)
+
+# -D_STACK_CHK_GUARD is needed so that the stack protector doesn't let something slip by coincidence
+
+STACK_CHK_GUARD_NONCE := 0x$(shell openssl rand -hex 8)
+
 CARGS =   -mno-red-zone -fno-pic -mcmodel=kernel -Wall -Wextra -pedantic -std=c2x -nostdlib -ffreestanding -fno-asynchronous-unwind-tables -isysteminclude $(DEFINES) \
-	  -fno-stack-protector -fno-stack-check -fno-lto -fno-pie -mabi=sysv -mno-80387 -mno-mmx -mno-sse -mno-sse2 -mgeneral-regs-only
+	  -fno-lto -fno-pie -mabi=sysv -mno-80387 -mno-mmx -mno-sse -mno-sse2 -mgeneral-regs-only -fstack-protector-all -fno-stack-check \
+	  -D_STACK_CHK_GUARD=$(STACK_CHK_GUARD_NONCE)
 
 LIBGCC = cross/dest/lib/gcc/x86_64-elf/12.2.0/no-red-zone/libgcc.a
 
@@ -40,7 +46,7 @@ NAME = vmdagger
 all: $(NAME)
 
 dirs:
-	@if [ ! -d "build" ] ; then mkdir build build/policy build/mechanism build/mechanism/$(ARCH) ; fi
+	@if [ ! -d "build" ] ; then mkdir build build/policy build/policy/meta build/mechanism build/mechanism/$(ARCH) ; fi
 	@if [ ! -d "boot/iso_root" ] ; then mkdir boot/iso_root ; fi
 
 $(OBJS_POLICY): build/policy/%.o: source/policy/%.c $(HEADERS)

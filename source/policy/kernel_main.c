@@ -37,6 +37,18 @@ size_t total_physical_memory = 0;
 size_t available_physical_memory = 0;
 size_t used_physical_memory = 0;
 
+__attribute__ ((noinline)) static void test(void)
+{
+	int foo[16];
+
+	for (int i = 0; i < 64; i++)
+		foo[i] = 0xaa;
+
+	(void) foo;
+
+	return;
+}
+
 /*
  * kernel_main
  *
@@ -55,52 +67,7 @@ noreturn void kernel_main(void)
 
 	kprintfln("kernel made through early boot with %i bytes to spare.", early_alloc_get_remaining());
 
-	char* c = kmalloc(sizeof (uint8_t) * 47);
-
-	kprintfln("%X\n", c);
-
-	slab_subsystem_dump_info();
-
-	c[0] = 'r';
-	c[1] = '\0';
-
-	kprintfln("%s", c);
-
-	kfree(c);
-
-	slab_subsystem_dump_info();
-
-	char* d = kmalloc(sizeof (uint8_t) * 511);
-
-	slab_subsystem_dump_info();
-
-	char* e = kmalloc(sizeof (uint8_t) * 512);
-
-	slab_subsystem_dump_info();
-
-	int www = (total_physical_memory - available_physical_memory) + used_physical_memory;
-
-	char* f = kmalloc(sizeof (uint8_t) * 1*MiB);
-	char* g = kmalloc(sizeof (uint8_t) * 1*MiB);
-	char* h = kmalloc(sizeof (uint8_t) * 1*MiB);
-
-	uint64_t magic = *(uint64_t*)((intptr_t) f & (~0xfff));
-
-	kprintfln("aaaa a %X", magic);
-
-	slab_subsystem_dump_info();
-
-	int zzz = (total_physical_memory - available_physical_memory) + used_physical_memory;
-
-	kprintfln("used %i\n", (zzz-www)/KiB);
-
-	kfree(f);
-	kfree(g);
-	kfree(h);
-	kfree(e);
-	kfree(d);
-
-	slab_subsystem_dump_info();
+	test();
 
 	return_not;
 }

@@ -53,8 +53,8 @@ typedef unsigned int uword_t;
  * backup semantics than sysv, it is necessary to call a separate "body" function so
  * that we can call into other kernel functions.
  */
-#define interrupt_entry __attribute__ ((interrupt))
-#define interrupt_body  __attribute__ ((no_caller_saved_registers))
+#define interrupt_entry __attribute__ ((interrupt,no_stack_protector))
+#define interrupt_body  __attribute__ ((no_caller_saved_registers,no_stack_protector))
 
 interrupt_entry          void isr_dummy_interrupt_entry(struct isr_interrupt_frame* frame);
 interrupt_body  noreturn void isr_dummy_interrupt_body (struct isr_interrupt_frame* frame);

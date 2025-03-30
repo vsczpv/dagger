@@ -18,29 +18,9 @@
  *
  */
 
-#include <arch/amd64/x86port.h>
-#include <naked.h>
+#ifndef KERNEL_NAKED_H_
+#define KERNEL_NAKED_H_
 
-naked void outb(uint16_t, uint8_t)
-{
-	__asm__ volatile
-	(
-		"movq %%rdi, %%rdx\n"
-		"movq %%rsi, %%rax\n"
-		"out %%al, %%dx\n"
-		"ret"
-		:::
-	);
-}
+#define naked __attribute__((naked,no_stack_protector))
 
-naked uint8_t inb(uint16_t)
-{
-	__asm__ volatile
-	(
-		"movq %%rdi, %%rdx\n"
-		"xorq %%rax, %%rax\n"
-		"in %%dx, %%al\n"
-		"ret"
-		:::
-	);
-}
+#endif // KERNEL_NAKED_H_

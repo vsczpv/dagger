@@ -23,6 +23,7 @@
 #include <arch/amd64/interrupts.h>
 #include <ktext.h>
 #include <panic.h>
+#include <naked.h>
 
 /* The interrupt descriptor table */
 volatile struct idt               kernel_idt      = {0};
@@ -64,7 +65,7 @@ struct idt_entry idt_entry_create(uint64_t isr_offset, uint16_t cs_selector, uin
 }
 
 /* Execute the lidt instruction */
-static void __attribute__ ((naked)) idt_load_execute_lidt(void)
+naked static void idt_load_execute_lidt(void)
 {
 	__asm__ volatile
 	(

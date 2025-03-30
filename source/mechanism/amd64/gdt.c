@@ -21,6 +21,7 @@
 #include <arch/amd64/gdt.h>
 
 #include <ktext.h>
+#include <naked.h>
 
 /* The global descriptor table */
 volatile struct gdt kernel_gdt                    = {0};
@@ -47,7 +48,7 @@ struct gdt_entry gdt_entry_create(uint32_t base, uint32_t limit, uint8_t flags, 
 }
 
 /* Execute the lgdt instruction and set the segment registers */
-static void __attribute__ ((naked)) gdt_load_execute_lgdt(uint64_t, uint64_t)
+naked static void gdt_load_execute_lgdt(uint64_t, uint64_t)
 {
 	__asm__ volatile
 	(
@@ -81,7 +82,7 @@ void gdt_load(uint64_t cs, uint64_t ds)
 }
 
 /* Set current segment */
-void __attribute__ ((naked)) gdt_set_segment(uint64_t, uint64_t)
+naked void gdt_set_segment(uint64_t, uint64_t)
 {
 	__asm__ volatile
 	(

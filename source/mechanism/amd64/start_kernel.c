@@ -37,6 +37,7 @@
 #include <phys.h>
 #include <paging.h>
 #include <buddy.h>
+#include <naked.h>
 
 #include <kernel.h>
 
@@ -270,7 +271,7 @@ static void assert_physmgr_n_paging(void)
 
 volatile uint8_t __attribute__ ((aligned(4*KiB))) kernel_stack[32*KiB];
 
-__attribute__ ((naked)) noreturn void start_kernel(void)
+naked noreturn void start_kernel(void)
 {
 	__asm__ volatile
 	(
