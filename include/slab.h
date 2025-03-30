@@ -51,13 +51,27 @@ struct slab_cache
 extern struct slab_cache slab_scs[SLAB_COUNT];
 
 struct slab_header* slab_prepare(struct slab_cache* parent, void* mem);
-int   slab_init     (struct slab_cache* sc, size_t stride);
 int   slab_expand   (struct slab_cache* sc);
 void  slab_kill     (struct slab_cache* sc, struct slab_header* sh);
 void  slab_destroy  (struct slab_cache* sc);
 
+int   slab_init     (struct slab_cache* sc, size_t stride);
+
 void* slab_alloc(struct slab_cache* sc);
+/*
+ * void* slab_alloc(struct slab_cache* sc);
+ *
+ * Allocates a chunk of memory that comes from a slab in `sc`.
+ *
+ * May return ENOMEM.
+ */
+
 void  slab_free (void* what);
+/*
+ * void slab_free (void* what);
+ *
+ * Frees a chunk of memory allocated from any slab.
+ */
 
 void slab_subsystem_init(void);
 void slab_subsystem_dump_info(void);

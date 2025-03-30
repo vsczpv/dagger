@@ -29,10 +29,28 @@
 #include <buddy.h>
 #include <slab.h>
 
+#define PTRERR(ptr) (ptr == NULL || ((intptr_t) ptr < 0))
+
 #define KLARGE_ALLOC_MAGIC 0xB150B150B150B150
 
 void* kmalloc(size_t bytes);
+/*
+ * void* kmalloc(size_t bytes);
+ *
+ * Allocate `bytes` bytes with a generic allocator. Memory yielded by this
+ * allocator must only be used by the kernel. The actual given amount might
+ * be larger.
+ *
+ * On error, it might return either NULL or ENOMEM. You can check with
+ * the PTRERR() macro.
+ */
+
 void  kfree  (void*  what);
+/*
+ * void kfree(void* what);
+ *
+ * Frees memory allocated by kmalloc().
+ */
 
 struct klarge_alloc_header
 {
